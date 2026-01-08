@@ -847,6 +847,45 @@ class ClaudeDaemon:
             for pid in dead:
                 del self.workers[pid]
 
+        # Also reset orphaned in_progress tickets (no active worker)
+        self.reset_orphaned_tickets()
+
+    def reset_orphaned_tickets(self):
+        """Reset in_progress tickets that have no active worker"""
+        try:
+            conn = self.get_db()
+            cursor = conn.cursor(dictionary=True)
+
+            # Get all in_progress tickets
+            cursor.execute("""
+                SELECT t.id, t.ticket_number, t.project_id
+                FROM tickets t
+                WHERE t.status = 'in_progress'
+            """)
+            in_progress = cursor.fetchall()
+
+            # Check which ones have no active worker
+            with self.workers_lock:
+                active_project_ids = set(self.workers.keys())
+
+            orphaned = [t for t in in_progress if t['project_id'] not in active_project_ids]
+
+            if orphaned:
+                orphan_ids = [t['id'] for t in orphaned]
+                cursor.execute(f"""
+                    UPDATE tickets
+                    SET status = 'open', updated_at = NOW()
+                    WHERE id IN ({','.join(['%s']*len(orphan_ids))})
+                """, orphan_ids)
+                conn.commit()
+                for t in orphaned:
+                    self.log(f"Reset orphaned ticket {t['ticket_number']} to open")
+
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            self.log(f"Error resetting orphaned tickets: {e}", "ERROR")
+
     def auto_close_expired_reviews(self):
         """Auto-close awaiting_input tickets that have passed their 7-day deadline"""
         try:
@@ -875,34 +914,55 @@ class ClaudeDaemon:
 
     def recover_orphaned_tickets(self):
         """Reset tickets that were left in_progress from a previous daemon run (e.g., after reboot)"""
-        try:
-            conn = self.get_db()
-            cursor = conn.cursor()
+        self.log("Checking for orphaned tickets from previous run...")
 
-            # Reset in_progress tickets back to open
-            cursor.execute("""
-                UPDATE tickets
-                SET status='open', updated_at=NOW()
-                WHERE status='in_progress'
-            """)
-            reset_tickets = cursor.rowcount
+        # Retry up to 5 times in case MySQL isn't ready yet
+        for attempt in range(5):
+            try:
+                conn = self.get_db()
+                cursor = conn.cursor()
 
-            # Mark orphaned running sessions as stuck
-            cursor.execute("""
-                UPDATE execution_sessions
-                SET status='stuck', ended_at=NOW()
-                WHERE status='running'
-            """)
-            stuck_sessions = cursor.rowcount
+                # Reset in_progress tickets back to open
+                cursor.execute("""
+                    UPDATE tickets
+                    SET status='open', updated_at=NOW()
+                    WHERE status='in_progress'
+                """)
+                reset_tickets = cursor.rowcount
 
-            conn.commit()
-            cursor.close()
-            conn.close()
+                # Also reset failed tickets back to open (from interrupted runs)
+                cursor.execute("""
+                    UPDATE tickets
+                    SET status='open', updated_at=NOW()
+                    WHERE status='failed'
+                    AND updated_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+                """)
+                reset_failed = cursor.rowcount
 
-            if reset_tickets > 0 or stuck_sessions > 0:
-                self.log(f"Startup recovery: reset {reset_tickets} orphaned ticket(s), marked {stuck_sessions} session(s) as stuck")
-        except Exception as e:
-            self.log(f"Error in startup recovery: {e}", "ERROR")
+                # Mark orphaned running sessions as stuck
+                cursor.execute("""
+                    UPDATE execution_sessions
+                    SET status='stuck', ended_at=NOW()
+                    WHERE status='running'
+                """)
+                stuck_sessions = cursor.rowcount
+
+                conn.commit()
+                cursor.close()
+                conn.close()
+
+                if reset_tickets > 0 or reset_failed > 0 or stuck_sessions > 0:
+                    self.log(f"Startup recovery: reset {reset_tickets} in_progress, {reset_failed} recently failed ticket(s), marked {stuck_sessions} session(s) as stuck")
+                else:
+                    self.log("Startup recovery: no orphaned tickets found")
+                return
+
+            except Exception as e:
+                self.log(f"Startup recovery attempt {attempt + 1}/5 failed: {e}", "WARNING")
+                if attempt < 4:
+                    time.sleep(2)  # Wait before retry
+                else:
+                    self.log(f"Startup recovery failed after 5 attempts", "ERROR")
 
     def run(self):
         self.log(f"Claude Daemon v3 started (user: {os.getenv('USER', 'unknown')})")

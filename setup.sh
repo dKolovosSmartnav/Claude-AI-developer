@@ -1,7 +1,7 @@
 #!/bin/bash
 # =====================================================
 # FOTIOS CLAUDE SYSTEM - Installation Script
-# Version: 2.26.9
+# Version is read from VERSION file
 # =====================================================
 # Usage:
 #   sudo ./setup.sh          (from root or with sudo)
@@ -18,10 +18,20 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+# Get script directory first
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Read version from VERSION file
+if [ -f "${SCRIPT_DIR}/VERSION" ]; then
+    VERSION=$(cat "${SCRIPT_DIR}/VERSION" | tr -d '[:space:]')
+else
+    VERSION="unknown"
+fi
+
 echo -e "${GREEN}"
 echo "╔═══════════════════════════════════════════════════════════╗"
 echo "║       FOTIOS CLAUDE SYSTEM - Installation                 ║"
-echo "║              Version 2.26.9                                ║"
+echo "║              Version ${VERSION}                              ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -35,8 +45,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Already got SCRIPT_DIR at top
 cd "$SCRIPT_DIR"
 
 # =====================================================
@@ -402,7 +411,7 @@ cat > ${CONFIG_DIR}/system.conf << CONFEOF
 # =====================================================
 # Fotios Claude System Configuration
 # Generated: $(date)
-# Version: 2.26.9
+# Version: ${VERSION}
 # =====================================================
 
 # Database
@@ -499,6 +508,7 @@ User=${CLAUDE_USER}
 Group=${CLAUDE_USER}
 WorkingDirectory=${INSTALL_DIR}
 ExecStart=/usr/bin/python3 ${INSTALL_DIR}/web/app.py
+ExecStopPost=/bin/bash -c 'fuser -k 5000/tcp 2>/dev/null || true'
 Restart=always
 RestartSec=5
 StandardOutput=append:${LOG_DIR}/web.log

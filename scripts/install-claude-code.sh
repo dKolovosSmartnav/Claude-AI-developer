@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================
-# Install Claude Code CLI
+# Install/Run Claude Code CLI
 # Standalone script for Ubuntu/Debian
 # =====================================================
 
@@ -15,13 +15,12 @@ NC='\033[0m'
 
 echo -e "${CYAN}"
 echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║           CLAUDE CODE INSTALLER                           ║"
+echo "║           CLAUDE CODE                                     ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
 # Check if running as root
 if [ "$EUID" -eq 0 ]; then
-    echo -e "${YELLOW}Running as root - will create 'claude' user${NC}"
     CLAUDE_USER="claude"
 
     # Create claude user if not exists
@@ -29,21 +28,43 @@ if [ "$EUID" -eq 0 ]; then
         echo "Creating user '$CLAUDE_USER'..."
         useradd -m -s /bin/bash "$CLAUDE_USER"
         echo -e "${GREEN}User '$CLAUDE_USER' created${NC}"
-    else
-        echo -e "${GREEN}User '$CLAUDE_USER' already exists${NC}"
     fi
 
     RUN_AS="su - $CLAUDE_USER -c"
+    CLAUDE_HOME="/home/claude"
 else
     CLAUDE_USER="$USER"
     RUN_AS="bash -c"
-    echo -e "${YELLOW}Running as user: $CLAUDE_USER${NC}"
+    CLAUDE_HOME="$HOME"
 fi
 
+# Function to run claude
+run_claude() {
+    echo ""
+    echo -e "${GREEN}Starting Claude Code...${NC}"
+    echo ""
+
+    if [ "$EUID" -eq 0 ]; then
+        cd "$CLAUDE_HOME"
+        exec su - claude -c "cd $CLAUDE_HOME && claude --dangerously-skip-permissions"
+    else
+        cd "$CLAUDE_HOME"
+        exec claude --dangerously-skip-permissions
+    fi
+}
+
+# Check if Claude Code already installed
+if $RUN_AS "which claude" &>/dev/null; then
+    echo -e "${GREEN}Claude Code is installed${NC}"
+    run_claude
+fi
+
+# Not installed - proceed with installation
+echo ""
+echo "Installing Claude Code..."
 echo ""
 
 # Check/Install Node.js
-echo "Checking Node.js..."
 if ! command -v node &>/dev/null; then
     echo -e "${YELLOW}Node.js not found. Installing...${NC}"
     if [ "$EUID" -eq 0 ]; then
@@ -58,22 +79,7 @@ if ! command -v node &>/dev/null; then
 fi
 echo -e "${GREEN}Node.js: $(node --version)${NC}"
 
-echo ""
-
-# Check if Claude Code already installed
-if $RUN_AS "which claude" &>/dev/null; then
-    echo -e "${GREEN}Claude Code is already installed!${NC}"
-    $RUN_AS "claude --version" 2>/dev/null || true
-    echo ""
-    echo -e "${YELLOW}To reconfigure, run:${NC}"
-    echo "  claude config set apiKey YOUR_API_KEY"
-    exit 0
-fi
-
 # Install Claude Code
-echo "Installing Claude Code..."
-echo ""
-
 if [ "$EUID" -eq 0 ]; then
     su - $CLAUDE_USER -c 'curl -fsSL https://claude.ai/install.sh | bash'
     # Add ~/.local/bin to PATH if not already there
@@ -92,33 +98,14 @@ fi
 
 echo ""
 
-# Verify installation
+# Verify installation and run
 if $RUN_AS "which claude" &>/dev/null; then
-    echo -e "${GREEN}╔═══════════════════════════════════════════════════════════╗"
-    echo "║           INSTALLATION SUCCESSFUL!                        ║"
-    echo "╚═══════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-    echo -e "${YELLOW}Next steps:${NC}"
-    echo ""
-    if [ "$EUID" -eq 0 ]; then
-        echo "  1. Switch to claude user and go to home directory:"
-        echo "     ${CYAN}su - claude${NC}"
-        echo "     ${CYAN}cd /home/claude${NC}"
-        echo ""
-        echo "  2. Run claude to login (API key or Max subscription):"
-        echo "     ${CYAN}claude${NC}"
-        echo ""
-        echo -e "  ${YELLOW}Or all in one command:${NC}"
-        echo "     ${CYAN}su - claude -c 'cd /home/claude && claude'${NC}"
-    else
-        echo "  1. Go to your home directory:"
-        echo "     ${CYAN}cd ~${NC}"
-        echo ""
-        echo "  2. Run claude to login (API key or Max subscription):"
-        echo "     ${CYAN}claude${NC}"
-    fi
+    echo -e "${GREEN}Installation successful!${NC}"
+    run_claude
 else
+    echo ""
     echo -e "${RED}Installation may have failed.${NC}"
+    echo ""
     echo "Try manually:"
     echo "  curl -fsSL https://claude.ai/install.sh | sh"
     exit 1

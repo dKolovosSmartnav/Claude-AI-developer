@@ -2,6 +2,52 @@
 
 All notable changes to Fotios Claude System will be documented in this file.
 
+## [2.26.14] - 2026-01-08
+
+### Fixed
+- **Startup Recovery**: Improved orphaned ticket recovery after reboot/restart
+  - Now also resets recently failed tickets (within 1 hour) back to open
+  - Added retry logic (5 attempts) if MySQL isn't ready
+  - Always logs startup recovery status for debugging
+
+---
+
+## [2.26.13] - 2026-01-08
+
+### Changed
+- **Claude Code Installer**: Now works as runtime launcher
+  - Checks if Claude is installed, if yes runs it directly
+  - If not installed, installs and then runs
+  - Runs with `--dangerously-skip-permissions` flag for unrestricted operation
+
+---
+
+## [2.26.12] - 2026-01-08
+
+### Changed
+- **Version Management**: Version now stored in single `VERSION` file instead of hardcoded in scripts
+- **Claude Code Installer**: Simplified installer now auto-runs claude after installation
+
+### Added
+- **VERSION file**: Single source of truth for version number
+- **setup.sh**: Now reads version from VERSION file dynamically
+
+---
+
+## [2.26.11] - 2026-01-08
+
+### Fixed
+- **Orphaned Tickets**: Added periodic cleanup for stuck in_progress tickets without active worker
+
+---
+
+## [2.26.10] - 2026-01-08
+
+### Fixed
+- **Service Stability**: Added ExecStopPost to kill orphan processes on port 5000
+
+---
+
 ## [2.26.9] - 2026-01-08
 
 ### Added

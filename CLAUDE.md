@@ -31,9 +31,9 @@ sudo systemctl restart fotios-claude-web fotios-claude-daemon
 ```
 
 ### 4. Update version numbers
-- `README.md` - Header version
-- `setup.sh` - Version comments and banner
-- `CLAUDE_OPERATIONS.md` - Footer version
+- `VERSION` - Single source of truth for version
+- `README.md` - Badge version and zip filename
+- `INSTALL.md` - Zip filename and footer version
 - `CHANGELOG.md` - New entry at the top
 
 ### 5. Create NEW zip (DON'T DELETE THE OLD ONE!)
@@ -87,4 +87,4 @@ systemctl status fotios-claude-web fotios-claude-daemon mysql lshttpd
 
 ---
 **Last updated:** 2026-01-08
-**Version:** 2.26.2
+**Version:** 2.26.12
