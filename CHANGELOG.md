@@ -2,6 +2,19 @@
 
 All notable changes to Fotios Claude System will be documented in this file.
 
+## [2.26.15] - 2026-01-09
+
+### Added
+- **User Guide**: Complete admin panel documentation with screenshots
+  - Dashboard overview
+  - Projects and tickets management
+  - Console view and execution history
+  - Kill switch commands reference
+  - Tips and troubleshooting
+- **Playwright Screenshots**: 8 screenshots generated for the guide
+
+---
+
 ## [2.26.14] - 2026-01-08
 
 ### Fixed

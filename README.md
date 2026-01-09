@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-2.26.14-green.svg" alt="Version"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-2.26.15-green.svg" alt="Version"></a>
   <img src="https://img.shields.io/badge/Ubuntu-22.04%20|%2024.04-orange.svg" alt="Ubuntu">
   <a href="https://anthropic.com"><img src="https://img.shields.io/badge/Powered%20by-Claude%20AI-blueviolet.svg" alt="Claude AI"></a>
   <a href="https://github.com/fotsakir/Claude-AI-developer/stargazers"><img src="https://img.shields.io/github/stars/fotsakir/Claude-AI-developer?style=social" alt="Stars"></a>
@@ -130,7 +130,7 @@ This is not science fiction. This is happening now. And this project lets you ex
 ```bash
 # Download, extract, and run
 cd /root
-unzip fotios-claude-system-2.26.14.zip
+unzip fotios-claude-system-2.26.15.zip
 cd fotios-claude-system
 chmod +x setup.sh && ./setup.sh
 
@@ -267,6 +267,7 @@ REVIEW_DEADLINE_DAYS=7
 
 | Document | Description |
 |----------|-------------|
+| [User Guide](docs/USER_GUIDE.md) | How to use the admin panel (with screenshots) |
 | [INSTALL.md](INSTALL.md) | Detailed installation guide |
 | [CLAUDE_OPERATIONS.md](CLAUDE_OPERATIONS.md) | System management & troubleshooting |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
