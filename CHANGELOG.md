@@ -5,6 +5,19 @@ All notable changes to the Fotios Claude System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.34.0] - 2026-01-10
+
+### Changed
+- **Database Schema**: Complete baseline schema.sql with all current features
+  - Added `ai_model` column to projects and tickets tables
+  - Added Smart Context tables (user_preferences, project_maps, project_knowledge, conversation_extractions)
+  - Added all views (v_ticket_context, v_projects_needing_map, v_tickets_needing_extraction)
+  - Removed user-created tables from schema
+- **Migrations**: Cleaned up - this is the initial release baseline
+  - Migrations only run via upgrade.sh for future updates
+  - schema.sql is the complete database for fresh installs
+- **Documentation**: Updated CLAUDE_DEV_NOTES.md with migration workflow
+
 ## [2.33.0] - 2026-01-10
 
 ### Added

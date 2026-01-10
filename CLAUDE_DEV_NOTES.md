@@ -213,9 +213,16 @@ cursor.close(); conn.close()
 
 ### Add Database Column
 
-1. Create migration in `database/migrations/`
-2. Run migration manually or add to schema.sql
+**For new installations:** Update `database/schema.sql` directly (this is the baseline)
+
+**For existing installations (upgrades):**
+1. Create migration in `database/migrations/` (e.g., `001_add_column.sql`)
+2. Migrations run ONLY via `upgrade.sh` - never manually
 3. Update relevant queries in app.py/daemon
+
+**Important:**
+- `schema.sql` = complete database for fresh installs (setup.sh)
+- `migrations/` = incremental changes for upgrades only (upgrade.sh)
 
 ### Add WebSocket Event
 
