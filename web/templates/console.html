@@ -481,6 +481,7 @@
             <a href="/projects">Projects</a>
             <a href="/tickets">Tickets</a>
             <a href="/console" class="active">Console</a>
+            <a href="/terminal">Terminal</a>
             <a href="/history">History</a>
         </div>
         <div class="nav-right">
@@ -553,6 +554,8 @@
         const statusDot = document.getElementById('status-dot');
         const statusText = document.getElementById('status-text');
         let currentView = 'conversation';
+        const shownMessageIds = new Set();
+        let lastUserMessageTime = 0;
 
         socket.on('connect', () => {
             statusDot.className = 'status-dot running';
@@ -572,10 +575,17 @@
         });
 
         socket.on('new_message', (msg) => {
+            // Skip duplicates
+            if (msg.id && shownMessageIds.has(msg.id)) return;
+            // Skip user messages sent within 3 seconds (optimistic add)
+            if (msg.role === 'user' && Date.now() - lastUserMessageTime < 3000) return;
             addMessage(msg);
         });
 
         function addMessage(msg) {
+            if (msg.id) shownMessageIds.add(msg.id);
+            if (msg.role === 'user') lastUserMessageTime = Date.now();
+
             const div = document.createElement('div');
             div.className = `message ${msg.role}`;
 

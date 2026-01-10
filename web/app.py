@@ -6,7 +6,7 @@ Fotios Claude Admin Panel v2
 - Background daemon control
 """
 
-VERSION = "2.27.1"
+VERSION = "2.32.0"
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -1284,10 +1284,12 @@ def upload_file(project_id):
                 cursor2 = conn2.cursor()
                 file_list = ', '.join(uploaded)
                 msg = f"[Uploaded files to ticket_files/: {file_list}]"
+                msg_tokens = len(msg.encode('utf-8')) // 4
                 cursor2.execute(
-                    "INSERT INTO conversation_messages (ticket_id, role, content) VALUES (%s, 'user', %s)",
-                    (ticket_id, msg)
+                    "INSERT INTO conversation_messages (ticket_id, role, content, token_count) VALUES (%s, 'user', %s, %s)",
+                    (ticket_id, msg, msg_tokens)
                 )
+                cursor2.execute("UPDATE tickets SET total_tokens = total_tokens + %s WHERE id = %s", (msg_tokens, ticket_id))
                 conn2.commit()
                 cursor2.close()
                 conn2.close()
@@ -1422,7 +1424,12 @@ def api_projects():
         web_path = data.get('web_path', '').strip()
         app_path = data.get('app_path', '').strip()
         context = data.get('context', '').strip()
+        ai_model = data.get('ai_model', 'sonnet')
         skip_database = data.get('skip_database', False)
+
+        # Validate ai_model
+        if ai_model not in ('opus', 'sonnet', 'haiku'):
+            ai_model = 'sonnet'
 
         if not name or not code:
             return jsonify({'success': False, 'message': 'Name and code required'})
@@ -1448,11 +1455,11 @@ def api_projects():
             cursor.execute("""
                 INSERT INTO projects (name, code, description, project_type, tech_stack,
                     web_path, app_path, context, db_name, db_user, db_password, db_host,
-                    status, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'localhost', 'active', NOW(), NOW())
+                    ai_model, status, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'localhost', %s, 'active', NOW(), NOW())
             """, (name, code, description, project_type, tech_stack or None,
                   web_path or None, app_path or None, context or None,
-                  db_name, db_user, db_password))
+                  db_name, db_user, db_password, ai_model))
             conn.commit()
             project_id = cursor.lastrowid
 
@@ -1552,6 +1559,11 @@ def api_project_detail(project_id):
     if 'preview_url' in data:
         updates.append("preview_url = %s")
         params.append(data['preview_url'].strip() or None)
+    if 'ai_model' in data:
+        ai_model = data['ai_model']
+        if ai_model in ('opus', 'sonnet', 'haiku'):
+            updates.append("ai_model = %s")
+            params.append(ai_model)
 
     if not updates:
         cursor.close(); conn.close()
@@ -1586,7 +1598,7 @@ def ticket_detail(ticket_id):
         cursor.execute("""
             SELECT t.*, p.name as project_name, p.code as project_code,
                    COALESCE(p.web_path, p.app_path) as project_path,
-                   p.preview_url
+                   p.preview_url, p.ai_model as project_ai_model
             FROM tickets t JOIN projects p ON t.project_id = p.id
             WHERE t.id = %s
         """, (ticket_id,))
@@ -1618,23 +1630,28 @@ def api_tickets():
         title = data.get('title', '').strip()
         description = data.get('description', '').strip()
         priority = data.get('priority', 'medium')
-        
+        ai_model = data.get('ai_model')  # None = inherit from project
+
+        # Validate ai_model
+        if ai_model and ai_model not in ('opus', 'sonnet', 'haiku'):
+            ai_model = None
+
         if not project_id or not title:
             return jsonify({'success': False, 'message': 'Project and title required'})
-        
+
         try:
             # Get project code
             cursor.execute("SELECT code FROM projects WHERE id = %s", (project_id,))
             project = cursor.fetchone()
             if not project:
                 return jsonify({'success': False, 'message': 'Project not found'})
-            
+
             ticket_number = generate_ticket_number(project['code'], cursor)
-            
+
             cursor.execute("""
-                INSERT INTO tickets (project_id, ticket_number, title, description, priority, status, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, 'open', NOW(), NOW())
-            """, (project_id, ticket_number, title, description, priority))
+                INSERT INTO tickets (project_id, ticket_number, title, description, priority, ai_model, status, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, 'open', NOW(), NOW())
+            """, (project_id, ticket_number, title, description, priority, ai_model))
             conn.commit()
             ticket_id = cursor.lastrowid
             
@@ -1778,11 +1795,83 @@ def reopen_ticket(ticket_id):
 
         # If instructions provided, add as a user message for Claude to see
         if instructions:
+            reopen_msg = f"[REOPEN] Additional instructions:\n{instructions}"
+            msg_tokens = len(reopen_msg.encode('utf-8')) // 4
             cursor.execute("""
-                INSERT INTO conversation_messages (ticket_id, role, content, created_at)
-                VALUES (%s, 'user', %s, NOW())
-            """, (ticket_id, f"[REOPEN] Additional instructions:\n{instructions}"))
+                INSERT INTO conversation_messages (ticket_id, role, content, token_count, created_at)
+                VALUES (%s, 'user', %s, %s, NOW())
+            """, (ticket_id, reopen_msg, msg_tokens))
+            cursor.execute("UPDATE tickets SET total_tokens = total_tokens + %s WHERE id = %s", (msg_tokens, ticket_id))
 
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/message/<int:message_id>', methods=['DELETE'])
+@login_required
+def delete_message(message_id):
+    """Delete a conversation message"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get message info first
+        cursor.execute("SELECT id, ticket_id, token_count FROM conversation_messages WHERE id = %s", (message_id,))
+        message = cursor.fetchone()
+
+        if not message:
+            cursor.close(); conn.close()
+            return jsonify({'success': False, 'message': 'Message not found'})
+
+        ticket_id = message['ticket_id']
+        token_count = message['token_count'] or 0
+
+        # Delete the message
+        cursor.execute("DELETE FROM conversation_messages WHERE id = %s", (message_id,))
+
+        # Update ticket token count
+        if token_count > 0:
+            cursor.execute("UPDATE tickets SET total_tokens = GREATEST(0, total_tokens - %s) WHERE id = %s",
+                          (token_count, ticket_id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Message deleted'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/ticket/<int:ticket_id>/settings', methods=['POST'])
+@login_required
+def update_ticket_settings(ticket_id):
+    """Update ticket settings like AI model"""
+    try:
+        data = request.get_json()
+        conn = get_db()
+        cursor = conn.cursor()
+
+        updates = []
+        params = []
+
+        if 'ai_model' in data:
+            ai_model = data['ai_model']
+            if ai_model in ('opus', 'sonnet', 'haiku'):
+                updates.append("ai_model = %s")
+                params.append(ai_model)
+            elif ai_model == '' or ai_model is None:
+                updates.append("ai_model = NULL")
+
+        if not updates:
+            cursor.close(); conn.close()
+            return jsonify({'success': False, 'message': 'No valid settings to update'})
+
+        updates.append("updated_at = NOW()")
+        params.append(ticket_id)
+
+        cursor.execute(f"UPDATE tickets SET {', '.join(updates)} WHERE id = %s", params)
         conn.commit()
         cursor.close()
         conn.close()
@@ -1895,45 +1984,125 @@ def send_ticket_message(ticket_id):
         if message.startswith('/'):
             cmd = message.lower().split()[0]
             if cmd == '/done':
+                # Save command to conversation for display
+                cursor.execute("""
+                    INSERT INTO conversation_messages (ticket_id, role, content, created_at)
+                    VALUES (%s, 'user', %s, NOW())
+                """, (ticket_id, message))
+                msg_id = cursor.lastrowid
                 cursor.execute("""
                     UPDATE tickets SET status = 'done', closed_at = NOW(),
                     closed_by = %s, close_reason = 'manual', updated_at = NOW()
                     WHERE id = %s
                 """, (session['user'], ticket_id))
+                # Signal daemon to stop Claude immediately
+                cursor.execute("""
+                    INSERT INTO user_messages (ticket_id, user_id, content, message_type)
+                    VALUES (%s, %s, '/done', 'command')
+                """, (ticket_id, session.get('user_id')))
+                # Add log entry
+                log_msg = f"✅ User command: /done - Ticket {ticket['ticket_number']} closed"
+                cursor.execute("""
+                    INSERT INTO daemon_logs (ticket_id, log_type, message, created_at)
+                    VALUES (%s, 'info', %s, NOW())
+                """, (ticket_id, log_msg))
                 conn.commit()
+                # Broadcast log to console
+                socketio.emit('new_log', {'log_type': 'info', 'message': log_msg, 'created_at': datetime.now().isoformat() + 'Z'}, room='console')
+                # Broadcast message immediately
+                cursor.execute("SELECT * FROM conversation_messages WHERE id = %s", (msg_id,))
+                new_msg = cursor.fetchone()
                 cursor.close(); conn.close()
+                if new_msg:
+                    if new_msg.get('created_at'): new_msg['created_at'] = to_iso_utc(new_msg['created_at'])
+                    new_msg['ticket_number'] = ticket['ticket_number']
+                    socketio.emit('new_message', new_msg, room=f'ticket_{ticket_id}')
+                    socketio.emit('new_message', new_msg, room='console')
                 socketio.emit('ticket_closed', {'ticket_id': ticket_id}, room=f'ticket_{ticket_id}')
                 return jsonify({'success': True, 'message': 'Ticket closed'})
             elif cmd == '/skip':
+                # Save command to conversation for display
+                cursor.execute("""
+                    INSERT INTO conversation_messages (ticket_id, role, content, created_at)
+                    VALUES (%s, 'user', %s, NOW())
+                """, (ticket_id, message))
+                msg_id = cursor.lastrowid
                 cursor.execute("""
                     UPDATE tickets SET status = 'skipped', closed_at = NOW(),
                     closed_by = %s, close_reason = 'skipped', updated_at = NOW()
                     WHERE id = %s
                 """, (session['user'], ticket_id))
-                conn.commit()
                 # Also signal daemon
                 cursor.execute("""
                     INSERT INTO user_messages (ticket_id, user_id, content, message_type)
                     VALUES (%s, %s, '/skip', 'command')
                 """, (ticket_id, session.get('user_id')))
+                # Add log entry
+                log_msg = f"⏭️ User command: /skip - Ticket {ticket['ticket_number']} skipped"
+                cursor.execute("""
+                    INSERT INTO daemon_logs (ticket_id, log_type, message, created_at)
+                    VALUES (%s, 'warning', %s, NOW())
+                """, (ticket_id, log_msg))
                 conn.commit()
+                # Broadcast log to console
+                socketio.emit('new_log', {'log_type': 'warning', 'message': log_msg, 'created_at': datetime.now().isoformat() + 'Z'}, room='console')
+                # Broadcast message immediately
+                cursor.execute("SELECT * FROM conversation_messages WHERE id = %s", (msg_id,))
+                new_msg = cursor.fetchone()
                 cursor.close(); conn.close()
+                if new_msg:
+                    if new_msg.get('created_at'): new_msg['created_at'] = to_iso_utc(new_msg['created_at'])
+                    new_msg['ticket_number'] = ticket['ticket_number']
+                    socketio.emit('new_message', new_msg, room=f'ticket_{ticket_id}')
+                    socketio.emit('new_message', new_msg, room='console')
                 return jsonify({'success': True, 'message': 'Ticket skipped'})
-        
+            elif cmd == '/stop':
+                # Save command to conversation for display
+                cursor.execute("""
+                    INSERT INTO conversation_messages (ticket_id, role, content, created_at)
+                    VALUES (%s, 'user', %s, NOW())
+                """, (ticket_id, message))
+                msg_id = cursor.lastrowid
+                # Signal daemon to stop Claude and wait for input
+                cursor.execute("""
+                    INSERT INTO user_messages (ticket_id, user_id, content, message_type)
+                    VALUES (%s, %s, '/stop', 'command')
+                """, (ticket_id, session.get('user_id')))
+                # Add log entry
+                log_msg = f"⏸️ User command: /stop - Ticket {ticket['ticket_number']} paused"
+                cursor.execute("""
+                    INSERT INTO daemon_logs (ticket_id, log_type, message, created_at)
+                    VALUES (%s, 'warning', %s, NOW())
+                """, (ticket_id, log_msg))
+                conn.commit()
+                # Broadcast log to console
+                socketio.emit('new_log', {'log_type': 'warning', 'message': log_msg, 'created_at': datetime.now().isoformat() + 'Z'}, room='console')
+                # Broadcast message immediately
+                cursor.execute("SELECT * FROM conversation_messages WHERE id = %s", (msg_id,))
+                new_msg = cursor.fetchone()
+                cursor.close(); conn.close()
+                if new_msg:
+                    if new_msg.get('created_at'): new_msg['created_at'] = to_iso_utc(new_msg['created_at'])
+                    new_msg['ticket_number'] = ticket['ticket_number']
+                    socketio.emit('new_message', new_msg, room=f'ticket_{ticket_id}')
+                    socketio.emit('new_message', new_msg, room='console')
+                return jsonify({'success': True, 'message': 'Stop signal sent'})
+
         # Save user message
+        msg_tokens = len(message.encode('utf-8')) // 4
         cursor.execute("""
-            INSERT INTO conversation_messages (ticket_id, role, content, created_at)
-            VALUES (%s, 'user', %s, NOW())
-        """, (ticket_id, message))
-        
+            INSERT INTO conversation_messages (ticket_id, role, content, token_count, created_at)
+            VALUES (%s, 'user', %s, %s, NOW())
+        """, (ticket_id, message, msg_tokens))
+
         # Also save to user_messages for daemon to pick up
         cursor.execute("""
             INSERT INTO user_messages (ticket_id, user_id, content, message_type, processed)
             VALUES (%s, %s, %s, 'message', FALSE)
         """, (ticket_id, session.get('user_id'), message))
-        
-        # Update ticket
-        cursor.execute("UPDATE tickets SET updated_at = NOW() WHERE id = %s", (ticket_id,))
+
+        # Update ticket tokens and timestamp
+        cursor.execute("UPDATE tickets SET total_tokens = total_tokens + %s, updated_at = NOW() WHERE id = %s", (msg_tokens, ticket_id))
         
         conn.commit()
         
@@ -2021,6 +2190,12 @@ def daemon_status():
 @login_required
 def console():
     return render_template('console.html', user=session['user'], role=session.get('role'))
+
+@app.route('/terminal')
+@login_required
+def terminal():
+    popup = request.args.get('popup', '0') == '1'
+    return render_template('terminal.html', user=session['user'], role=session.get('role'), popup=popup)
 
 @app.route('/api/logs/recent')
 @login_required
@@ -2152,15 +2327,19 @@ def send_console_message():
                 return jsonify({'success': True, 'message': 'Skip command sent'})
 
         # Save user message
+        msg_tokens = len(message.encode('utf-8')) // 4
         cursor.execute("""
-            INSERT INTO conversation_messages (ticket_id, role, content, created_at)
-            VALUES (%s, 'user', %s, NOW())
-        """, (ticket['id'], message))
+            INSERT INTO conversation_messages (ticket_id, role, content, token_count, created_at)
+            VALUES (%s, 'user', %s, %s, NOW())
+        """, (ticket['id'], message, msg_tokens))
 
         cursor.execute("""
             INSERT INTO user_messages (ticket_id, user_id, content, message_type, processed)
             VALUES (%s, %s, %s, 'message', FALSE)
         """, (ticket['id'], session.get('user_id'), message))
+
+        # Update ticket tokens
+        cursor.execute("UPDATE tickets SET total_tokens = total_tokens + %s WHERE id = %s", (msg_tokens, ticket['id']))
 
         conn.commit()
         cursor.close(); conn.close()
@@ -2290,7 +2469,7 @@ def get_dashboard_stats():
         conn = get_db()
         cursor = conn.cursor(dictionary=True)
 
-        # Today's stats
+        # Today's stats (completed sessions)
         cursor.execute("""
             SELECT
                 COALESCE(SUM(input_tokens), 0) as input_tokens,
@@ -2305,6 +2484,22 @@ def get_dashboard_stats():
             WHERE DATE(created_at) = CURDATE()
         """)
         today = cursor.fetchone()
+
+        # Add running sessions to today's stats
+        cursor.execute("""
+            SELECT
+                COALESCE(SUM(tokens_used), 0) as running_tokens,
+                COALESCE(SUM(api_calls), 0) as running_api_calls,
+                COALESCE(SUM(TIMESTAMPDIFF(SECOND, started_at, NOW())), 0) as running_duration,
+                COUNT(DISTINCT ticket_id) as running_tickets
+            FROM execution_sessions
+            WHERE status = 'running' AND DATE(started_at) = CURDATE()
+        """)
+        running = cursor.fetchone()
+        if running:
+            today['total_tokens'] = int(today['total_tokens'] or 0) + int(running['running_tokens'] or 0)
+            today['api_calls'] = int(today['api_calls'] or 0) + int(running['running_api_calls'] or 0)
+            today['duration_seconds'] = int(today['duration_seconds'] or 0) + int(running['running_duration'] or 0)
 
         # Last 7 days stats
         cursor.execute("""
@@ -2321,6 +2516,11 @@ def get_dashboard_stats():
             WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
         """)
         week = cursor.fetchone()
+        # Add running sessions to week
+        if running:
+            week['total_tokens'] = int(week['total_tokens'] or 0) + int(running['running_tokens'] or 0)
+            week['api_calls'] = int(week['api_calls'] or 0) + int(running['running_api_calls'] or 0)
+            week['duration_seconds'] = int(week['duration_seconds'] or 0) + int(running['running_duration'] or 0)
 
         # This month stats
         cursor.execute("""
@@ -2337,6 +2537,11 @@ def get_dashboard_stats():
             WHERE YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE())
         """)
         month = cursor.fetchone()
+        # Add running sessions to month
+        if running:
+            month['total_tokens'] = int(month['total_tokens'] or 0) + int(running['running_tokens'] or 0)
+            month['api_calls'] = int(month['api_calls'] or 0) + int(running['running_api_calls'] or 0)
+            month['duration_seconds'] = int(month['duration_seconds'] or 0) + int(running['running_duration'] or 0)
 
         # All time stats
         cursor.execute("""
@@ -2352,6 +2557,20 @@ def get_dashboard_stats():
             FROM usage_stats
         """)
         all_time = cursor.fetchone()
+        # Add ALL running sessions to all_time (not just today's)
+        cursor.execute("""
+            SELECT
+                COALESCE(SUM(tokens_used), 0) as running_tokens,
+                COALESCE(SUM(api_calls), 0) as running_api_calls,
+                COALESCE(SUM(TIMESTAMPDIFF(SECOND, started_at, NOW())), 0) as running_duration
+            FROM execution_sessions
+            WHERE status = 'running'
+        """)
+        all_running = cursor.fetchone()
+        if all_running:
+            all_time['total_tokens'] = int(all_time['total_tokens'] or 0) + int(all_running['running_tokens'] or 0)
+            all_time['api_calls'] = int(all_time['api_calls'] or 0) + int(all_running['running_api_calls'] or 0)
+            all_time['duration_seconds'] = int(all_time['duration_seconds'] or 0) + int(all_running['running_duration'] or 0)
 
         # Daily breakdown for chart (last 30 days)
         cursor.execute("""
@@ -2595,7 +2814,7 @@ def get_ticket_stats(ticket_id):
         conn = get_db()
         cursor = conn.cursor(dictionary=True)
 
-        # Ticket totals
+        # Ticket totals from usage_stats (completed sessions)
         cursor.execute("""
             SELECT
                 COALESCE(SUM(input_tokens), 0) as input_tokens,
@@ -2610,6 +2829,33 @@ def get_ticket_stats(ticket_id):
             WHERE ticket_id = %s
         """, (ticket_id,))
         totals = cursor.fetchone()
+
+        # Add running session tokens (real-time)
+        cursor.execute("""
+            SELECT COALESCE(SUM(tokens_used), 0) as running_tokens,
+                   COALESCE(SUM(TIMESTAMPDIFF(SECOND, started_at, NOW())), 0) as running_duration,
+                   COALESCE(SUM(api_calls), 0) as running_api_calls,
+                   COUNT(*) as running_sessions
+            FROM execution_sessions
+            WHERE ticket_id = %s AND status = 'running'
+        """, (ticket_id,))
+        running = cursor.fetchone()
+
+        if running and running['running_sessions']:
+            totals['total_tokens'] = int(totals['total_tokens'] or 0) + int(running['running_tokens'] or 0)
+            totals['duration_seconds'] = int(totals['duration_seconds'] or 0) + int(running['running_duration'] or 0)
+            totals['api_calls'] = int(totals['api_calls'] or 0) + int(running['running_api_calls'] or 0)
+            totals['sessions'] = int(totals['sessions'] or 0) + int(running['running_sessions'] or 0)
+
+        # Add user message tokens (from conversation_messages)
+        cursor.execute("""
+            SELECT COALESCE(SUM(token_count), 0) as user_tokens
+            FROM conversation_messages
+            WHERE ticket_id = %s AND role = 'user'
+        """, (ticket_id,))
+        user_msg = cursor.fetchone()
+        if user_msg and user_msg['user_tokens']:
+            totals['total_tokens'] = int(totals['total_tokens'] or 0) + int(user_msg['user_tokens'] or 0)
 
         # Session breakdown
         cursor.execute("""
@@ -2680,12 +2926,14 @@ def internal_broadcast():
     data = request.get_json()
     msg_type = data.get('type')
     ticket_id = data.get('ticket_id')
+    print(f"[Broadcast] type={msg_type}, ticket_id={ticket_id}")
 
     if msg_type == 'message' and ticket_id:
         msg = data.get('message', {})
         if msg.get('tool_input') and isinstance(msg['tool_input'], str):
             try: msg['tool_input'] = json.loads(msg['tool_input'])
             except: pass
+        print(f"[Broadcast] Emitting to room ticket_{ticket_id}: role={msg.get('role')}")
         socketio.emit('new_message', msg, room=f'ticket_{ticket_id}')
 
     elif msg_type == 'status' and ticket_id:
@@ -2802,7 +3050,7 @@ class ClaudeChatSession:
         self.running = False
         self.lock = threading.Lock()
 
-    def start(self):
+    def start(self, model='sonnet'):
         # Ensure config flags are set before starting Claude
         ensure_claude_config_flags()
 
@@ -2813,6 +3061,10 @@ class ClaudeChatSession:
             uid, gid = pw.pw_uid, pw.pw_gid
         except KeyError:
             uid, gid = None, None
+
+        # Use simple model aliases (opus, sonnet, haiku)
+        if model not in ('opus', 'sonnet', 'haiku'):
+            model = 'sonnet'
 
         pid, fd = pty.fork()
         if pid == 0:
@@ -2825,7 +3077,7 @@ class ClaudeChatSession:
                 'TERM': 'xterm-256color', 'SHELL': '/bin/bash',
             })
             os.chdir(self.user_home)
-            os.execvpe(claude_path, [claude_path, '--dangerously-skip-permissions'], env)
+            os.execvpe(claude_path, [claude_path, '--dangerously-skip-permissions', '--model', model], env)
         else:
             self.pid, self.fd, self.running = pid, fd, True
             fl = fcntl.fcntl(fd, fcntl.F_GETFL)
@@ -3013,9 +3265,14 @@ def claude_save_apikey():
 @app.route('/api/claude/chat/start', methods=['POST'])
 @login_required
 def claude_chat_start():
+    data = request.get_json() or {}
+    model = data.get('model', 'sonnet')
+    if model not in ('opus', 'sonnet', 'haiku'):
+        model = 'sonnet'
+
     session_id = str(uuid.uuid4())
     sess = ClaudeChatSession()
-    if sess.start():
+    if sess.start(model=model):
         claude_sessions[session_id] = sess
         return jsonify({'success': True, 'session_id': session_id})
     return jsonify({'success': False, 'error': 'Failed to start'})
@@ -3057,7 +3314,9 @@ def claude_chat_stop(session_id):
 @app.route('/claude-assistant')
 @login_required
 def claude_assistant():
-    return render_template('claude_assistant.html', user=session.get('user'))
+    popup = request.args.get('popup', '0') == '1'
+    mode = request.args.get('mode', '')  # blueprint, etc.
+    return render_template('claude_assistant.html', user=session.get('user'), popup=popup, mode=mode)
 
 # ============ WEBSOCKET ============
 
@@ -3083,6 +3342,159 @@ def handle_join_console():
     join_room('console')
     emit('joined', {'room': 'console'})
 
+# ============ TERMINAL WEBSOCKET ============
+
+# Store active terminal sessions: {terminal_id: {'fd': master_fd, 'pid': pid, 'sid': socket_sid}}
+active_terminals = {}
+terminal_lock = threading.Lock()
+
+def terminal_reader(terminal_id, master_fd, sid):
+    """Background thread to read terminal output and send to client"""
+    try:
+        while True:
+            if terminal_id not in active_terminals:
+                break
+            try:
+                ready, _, _ = select.select([master_fd], [], [], 0.1)
+                if ready:
+                    data = os.read(master_fd, 4096)
+                    if data:
+                        socketio.emit('terminal_output', {'id': terminal_id, 'data': data.decode('utf-8', errors='replace')}, room=sid)
+                    else:
+                        break
+            except (OSError, IOError):
+                break
+    except Exception as e:
+        pass
+    finally:
+        # Cleanup when reader exits
+        with terminal_lock:
+            if terminal_id in active_terminals:
+                term_info = active_terminals.pop(terminal_id)
+                try:
+                    os.close(term_info['fd'])
+                except: pass
+                try:
+                    os.kill(term_info['pid'], signal.SIGTERM)
+                except: pass
+        socketio.emit('terminal_exit', {'id': terminal_id}, room=sid)
+
+@socketio.on('terminal_create')
+def handle_terminal_create(data):
+    """Create a new terminal session"""
+    cols = data.get('cols', 80)
+    rows = data.get('rows', 24)
+    sid = request.sid
+
+    try:
+        # Create pseudo-terminal
+        pid, fd = pty.fork()
+
+        if pid == 0:
+            # Child process - exec shell
+            os.chdir('/home/claude')
+            env = os.environ.copy()
+            env['TERM'] = 'xterm-256color'
+            env['HOME'] = '/home/claude'
+            env['USER'] = 'claude'
+            env['SHELL'] = '/bin/bash'
+            os.execvpe('/bin/bash', ['/bin/bash', '-l'], env)
+        else:
+            # Parent process
+            # Set terminal size
+            winsize = struct.pack('HHHH', rows, cols, 0, 0)
+            fcntl.ioctl(fd, termios.TIOCSWINSZ, winsize)
+
+            # Make fd non-blocking
+            flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+            fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+            # Generate unique terminal ID
+            terminal_id = str(uuid.uuid4())[:8]
+
+            # Store terminal info
+            with terminal_lock:
+                active_terminals[terminal_id] = {
+                    'fd': fd,
+                    'pid': pid,
+                    'sid': sid
+                }
+
+            # Start reader thread
+            threading.Thread(target=terminal_reader, args=(terminal_id, fd, sid), daemon=True).start()
+
+            emit('terminal_created', {'id': terminal_id})
+
+    except Exception as e:
+        emit('terminal_error', {'error': str(e)})
+
+@socketio.on('terminal_input')
+def handle_terminal_input(data):
+    """Handle input from client"""
+    terminal_id = data.get('id')
+    input_data = data.get('data', '')
+
+    with terminal_lock:
+        if terminal_id in active_terminals:
+            fd = active_terminals[terminal_id]['fd']
+            try:
+                os.write(fd, input_data.encode('utf-8'))
+            except (OSError, IOError):
+                pass
+
+@socketio.on('terminal_resize')
+def handle_terminal_resize(data):
+    """Handle terminal resize"""
+    terminal_id = data.get('id')
+    cols = data.get('cols', 80)
+    rows = data.get('rows', 24)
+
+    with terminal_lock:
+        if terminal_id in active_terminals:
+            fd = active_terminals[terminal_id]['fd']
+            try:
+                winsize = struct.pack('HHHH', rows, cols, 0, 0)
+                fcntl.ioctl(fd, termios.TIOCSWINSZ, winsize)
+            except (OSError, IOError):
+                pass
+
+@socketio.on('terminal_kill')
+def handle_terminal_kill(data):
+    """Kill a terminal session"""
+    terminal_id = data.get('id')
+
+    with terminal_lock:
+        if terminal_id in active_terminals:
+            term_info = active_terminals.pop(terminal_id)
+            try:
+                os.close(term_info['fd'])
+            except: pass
+            try:
+                os.kill(term_info['pid'], signal.SIGTERM)
+            except: pass
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Clean up terminals when client disconnects"""
+    sid = request.sid
+    terminals_to_kill = []
+
+    with terminal_lock:
+        for tid, info in list(active_terminals.items()):
+            if info['sid'] == sid:
+                terminals_to_kill.append((tid, info))
+
+    for tid, info in terminals_to_kill:
+        with terminal_lock:
+            if tid in active_terminals:
+                del active_terminals[tid]
+        try:
+            os.close(info['fd'])
+        except: pass
+        try:
+            os.kill(info['pid'], signal.SIGTERM)
+        except: pass
+
 # Background thread to push new messages
 def message_pusher():
     last_ids = {}
@@ -3091,21 +3503,22 @@ def message_pusher():
             conn = get_db()
             if conn:
                 cursor = conn.cursor(dictionary=True)
-                
-                # Get active tickets
-                cursor.execute("SELECT id FROM tickets WHERE status = 'in_progress'")
+
+                # Get active tickets with their ticket_number
+                cursor.execute("SELECT id, ticket_number FROM tickets WHERE status = 'in_progress'")
                 active_tickets = cursor.fetchall()
-                
+
                 for ticket in active_tickets:
                     tid = ticket['id']
+                    ticket_number = ticket['ticket_number']
                     last_id = last_ids.get(tid, 0)
-                    
+
                     cursor.execute("""
-                        SELECT * FROM conversation_messages 
+                        SELECT * FROM conversation_messages
                         WHERE ticket_id = %s AND id > %s
                         ORDER BY id ASC LIMIT 20
                     """, (tid, last_id))
-                    
+
                     messages = cursor.fetchall()
                     for msg in messages:
                         last_ids[tid] = msg['id']
@@ -3114,7 +3527,10 @@ def message_pusher():
                             try: msg['tool_input'] = json.loads(msg['tool_input'])
                             except: pass
                         socketio.emit('new_message', msg, room=f'ticket_{tid}')
-                
+                        # Also broadcast to console with ticket_number
+                        msg['ticket_number'] = ticket_number
+                        socketio.emit('new_message', msg, room='console')
+
                 cursor.close(); conn.close()
         except: pass
         time.sleep(1)

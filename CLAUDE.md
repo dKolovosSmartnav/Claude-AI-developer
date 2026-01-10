@@ -85,6 +85,20 @@ Check that services are running:
 systemctl status fotios-claude-web fotios-claude-daemon mysql lshttpd
 ```
 
+## Detailed Development Notes
+
+For comprehensive development guide, database info, common tasks, and tips:
+```
+/home/claude/fotios-claude-system/CLAUDE_DEV_NOTES.md
+```
+
+## Project Template
+
+For helping users design projects:
+```
+/home/claude/PROJECT_TEMPLATE.md
+```
+
 ---
-**Last updated:** 2026-01-08
-**Version:** 2.26.12
+**Last updated:** 2026-01-10
+**Version:** 2.32.0

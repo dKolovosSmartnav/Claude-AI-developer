@@ -850,6 +850,7 @@
             <a href="/projects" class="active">Projects</a>
             <a href="/tickets">Tickets</a>
             <a href="/console">Console</a>
+            <a href="/terminal">Terminal</a>
             <a href="/history">History</a>
         </div>
         <div class="nav-right">
@@ -1069,6 +1070,15 @@
                         <option value="critical">Critical</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label>AI Model</label>
+                    <select name="ai_model">
+                        <option value="">Use Project Default ({{ project.ai_model or 'sonnet' }})</option>
+                        <option value="sonnet">Sonnet</option>
+                        <option value="opus">Opus (Most Powerful)</option>
+                        <option value="haiku">Haiku (Fastest)</option>
+                    </select>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="hideModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Create Ticket</button>
@@ -1120,7 +1130,8 @@
                 project_id: projectId,
                 title: form.title.value,
                 description: form.description.value,
-                priority: form.priority.value
+                priority: form.priority.value,
+                ai_model: form.ai_model.value || null
             };
 
             const resp = await fetch('/api/tickets', {

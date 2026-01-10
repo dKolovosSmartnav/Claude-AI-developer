@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal - Fotios Claude</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #07070d;
+            --bg-secondary: #0d0d16;
+            --bg-card: rgba(18, 18, 32, 0.7);
+            --border-subtle: rgba(99, 102, 241, 0.15);
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-primary: #6366f1;
+            --accent-secondary: #8b5cf6;
+            --accent-cyan: #22d3ee;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .aurora-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: var(--bg-primary);
+            overflow: hidden;
+        }
+
+        .aurora-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.5;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .aurora-blob:nth-child(1) {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, transparent 70%);
+            top: -200px;
+            left: -100px;
+        }
+
+        .aurora-blob:nth-child(2) {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%);
+            top: 50%;
+            right: -150px;
+            animation-delay: -5s;
+        }
+
+        .aurora-blob:nth-child(3) {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(34, 211, 238, 0.25) 0%, transparent 70%);
+            bottom: -100px;
+            left: 30%;
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(50px, -30px) scale(1.05); }
+            50% { transform: translate(-30px, 50px) scale(0.95); }
+            75% { transform: translate(-50px, -20px) scale(1.02); }
+        }
+
+        .header {
+            background: rgba(13, 13, 22, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav { display: flex; gap: 8px; }
+        .nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .nav a:hover, .nav a.active {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .nav-right .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        .nav-right .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        .toolbar {
+            background: rgba(13, 13, 22, 0.6);
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .toolbar button {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toolbar button:hover {
+            color: var(--text-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .toolbar button.active {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
+        .status {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-red);
+        }
+
+        .status-dot.connected {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        .terminal-container {
+            height: calc(100vh - 120px);
+            padding: 16px;
+            background: #000;
+        }
+
+        #terminal {
+            height: 100%;
+        }
+
+        .xterm {
+            padding: 8px;
+        }
+
+        /* Popup mode - minimal header */
+        body.popup-mode .header {
+            padding: 10px 16px;
+        }
+
+        body.popup-mode .nav {
+            display: none;
+        }
+
+        body.popup-mode .header h1 {
+            font-size: 1rem;
+        }
+
+        body.popup-mode .terminal-container {
+            height: calc(100vh - 100px);
+        }
+    </style>
+</head>
+<body class="{% if popup %}popup-mode{% endif %}">
+    <div class="aurora-bg">
+        <div class="aurora-blob"></div>
+        <div class="aurora-blob"></div>
+        <div class="aurora-blob"></div>
+    </div>
+
+    <div class="header">
+        <h1>Fotios Claude</h1>
+        {% if not popup %}
+        <div class="nav">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/projects">Projects</a>
+            <a href="/tickets">Tickets</a>
+            <a href="/console">Console</a>
+            <a href="/terminal" class="active">Terminal</a>
+            <a href="/history">History</a>
+        </div>
+        {% endif %}
+        <div class="nav-right">
+            {% if popup %}
+            <span style="color: var(--accent-cyan); font-size: 13px;">Popup Mode</span>
+            {% endif %}
+            <a href="/logout" class="nav-link">Logout</a>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        {% if not popup %}
+        <button onclick="openPopup()" title="Open in new window">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+            </svg>
+            New Window
+        </button>
+        {% endif %}
+        <button onclick="reconnect()" title="Reconnect terminal">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+            Reconnect
+        </button>
+        <button onclick="clearTerminal()" title="Clear terminal">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+            </svg>
+            Clear
+        </button>
+        <div class="status">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-text">Connecting...</span>
+        </div>
+    </div>
+
+    <div class="terminal-container">
+        <div id="terminal"></div>
+    </div>
+
+    <script>
+        const isPopup = {{ 'true' if popup else 'false' }};
+        let term, fitAddon, socket, terminalId = null;
+
+        // Initialize terminal
+        function initTerminal() {
+            term = new Terminal({
+                cursorBlink: true,
+                fontSize: 14,
+                fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace',
+                theme: {
+                    background: '#000000',
+                    foreground: '#e2e8f0',
+                    cursor: '#22d3ee',
+                    cursorAccent: '#000000',
+                    selection: 'rgba(99, 102, 241, 0.4)',
+                    black: '#000000',
+                    red: '#ef4444',
+                    green: '#10b981',
+                    yellow: '#f59e0b',
+                    blue: '#6366f1',
+                    magenta: '#8b5cf6',
+                    cyan: '#22d3ee',
+                    white: '#e2e8f0',
+                    brightBlack: '#64748b',
+                    brightRed: '#f87171',
+                    brightGreen: '#34d399',
+                    brightYellow: '#fbbf24',
+                    brightBlue: '#818cf8',
+                    brightMagenta: '#a78bfa',
+                    brightCyan: '#67e8f9',
+                    brightWhite: '#f8fafc'
+                },
+                scrollback: 10000,
+                allowProposedApi: true
+            });
+
+            fitAddon = new FitAddon.FitAddon();
+            const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+
+            term.loadAddon(fitAddon);
+            term.loadAddon(webLinksAddon);
+
+            term.open(document.getElementById('terminal'));
+            fitAddon.fit();
+
+            // Handle input
+            term.onData(data => {
+                if (socket && socket.connected && terminalId) {
+                    socket.emit('terminal_input', { id: terminalId, data: data });
+                }
+            });
+
+            // Handle resize
+            term.onResize(({ cols, rows }) => {
+                if (socket && socket.connected && terminalId) {
+                    socket.emit('terminal_resize', { id: terminalId, cols: cols, rows: rows });
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                fitAddon.fit();
+            });
+        }
+
+        // Initialize socket connection
+        function initSocket() {
+            socket = io({
+                transports: ['polling'],
+                upgrade: false
+            });
+
+            socket.on('connect', () => {
+                updateStatus(true, 'Connected');
+                // Request new terminal
+                const { cols, rows } = term;
+                socket.emit('terminal_create', { cols: cols, rows: rows });
+            });
+
+            socket.on('disconnect', () => {
+                updateStatus(false, 'Disconnected');
+                terminalId = null;
+            });
+
+            socket.on('terminal_created', (data) => {
+                terminalId = data.id;
+                updateStatus(true, 'Terminal ready');
+                term.focus();
+            });
+
+            socket.on('terminal_output', (data) => {
+                if (data.id === terminalId) {
+                    term.write(data.data);
+                }
+            });
+
+            socket.on('terminal_exit', (data) => {
+                if (data.id === terminalId) {
+                    term.write('\r\n\x1b[31m[Terminal session ended]\x1b[0m\r\n');
+                    updateStatus(false, 'Session ended');
+                    terminalId = null;
+                }
+            });
+        }
+
+        function updateStatus(connected, text) {
+            const dot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+            dot.className = 'status-dot' + (connected ? ' connected' : '');
+            statusText.textContent = text;
+        }
+
+        function openPopup() {
+            const width = 1000;
+            const height = 700;
+            const left = (screen.width - width) / 2;
+            const top = (screen.height - height) / 2;
+            window.open('/terminal?popup=1', 'terminal_popup',
+                `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no`);
+        }
+
+        function reconnect() {
+            if (terminalId && socket) {
+                socket.emit('terminal_kill', { id: terminalId });
+            }
+            terminalId = null;
+            term.clear();
+            term.write('\x1b[33mReconnecting...\x1b[0m\r\n');
+
+            if (socket && socket.connected) {
+                const { cols, rows } = term;
+                socket.emit('terminal_create', { cols: cols, rows: rows });
+            } else {
+                socket.connect();
+            }
+        }
+
+        function clearTerminal() {
+            term.clear();
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            initTerminal();
+            initSocket();
+        });
+
+        // Cleanup on unload
+        window.addEventListener('beforeunload', () => {
+            if (terminalId && socket) {
+                socket.emit('terminal_kill', { id: terminalId });
+            }
+        });
+    </script>
+</body>
+</html>

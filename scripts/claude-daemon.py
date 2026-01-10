@@ -20,11 +20,20 @@ import urllib.error
 import shutil
 import zipfile
 import tempfile
+import select
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import mysql.connector
 from mysql.connector import pooling
+
+# Import Smart Context Manager
+try:
+    from smart_context import SmartContextManager
+    SMART_CONTEXT_ENABLED = True
+except ImportError:
+    SMART_CONTEXT_ENABLED = False
+    print("[WARNING] SmartContextManager not available - using basic context")
 
 BACKUP_DIR = "/var/backups/fotios-claude"
 MAX_BACKUPS = 30
@@ -43,13 +52,14 @@ MAX_PARALLEL_PROJECTS = 3
 class ProjectWorker(threading.Thread):
     """Worker thread for a specific project"""
 
-    def __init__(self, daemon, project_id, project_name, work_path, global_context=""):
+    def __init__(self, daemon, project_id, project_name, work_path, global_context="", context_manager=None):
         super().__init__(daemon=True)
         self.daemon_ref = daemon
         self.project_id = project_id
         self.project_name = project_name
         self.work_path = work_path
         self.global_context = global_context
+        self.context_manager = context_manager  # SmartContextManager instance
         self.running = True
         self.current_ticket_id = None
         self.current_session_id = None
@@ -82,19 +92,33 @@ class ProjectWorker(threading.Thread):
                 headers={'Content-Type': 'application/json'}
             )
             urllib.request.urlopen(req, timeout=2)
-        except:
-            pass  # Don't let broadcast failures affect the daemon
+        except Exception as e:
+            self.log(f"Broadcast failed: {e}", "ERROR")
 
     def save_message(self, role, content, tool_name=None, tool_input=None, tokens=0):
         if not self.current_ticket_id:
             return
         try:
+            # Use actual token count from API if provided, otherwise estimate
+            if tokens > 0:
+                # Actual count from Claude API response
+                token_count = tokens
+            elif content:
+                # Estimate: ~4 chars per token for English/code
+                token_count = len(content.encode('utf-8')) // 4
+            elif tool_input:
+                # For tool_use messages, estimate tokens from tool_input
+                tool_input_str = json.dumps(tool_input) if isinstance(tool_input, dict) else str(tool_input)
+                token_count = len(tool_input_str.encode('utf-8')) // 4
+            else:
+                token_count = 0
+
             conn = self.get_db()
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO conversation_messages
-                (ticket_id, session_id, role, content, tool_name, tool_input, tokens_used, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+                (ticket_id, session_id, role, content, tool_name, tool_input, tokens_used, token_count, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
             """, (
                 self.current_ticket_id,
                 self.current_session_id,
@@ -102,7 +126,8 @@ class ProjectWorker(threading.Thread):
                 content[:50000] if content else None,
                 tool_name,
                 json.dumps(tool_input) if tool_input else None,
-                tokens
+                tokens,
+                token_count
             ))
             msg_id = cursor.lastrowid
             conn.commit()
@@ -145,7 +170,8 @@ class ProjectWorker(threading.Thread):
             cursor.execute("""
                 SELECT t.*, p.web_path, p.app_path, p.name as project_name, p.code as project_code,
                        p.project_type, p.tech_stack, p.context as project_context, t.context as ticket_context,
-                       p.db_name, p.db_user, p.db_password, p.db_host
+                       p.db_name, p.db_user, p.db_password, p.db_host,
+                       p.ai_model as project_ai_model, t.ai_model as ticket_ai_model
                 FROM tickets t
                 JOIN projects p ON t.project_id = p.id
                 WHERE t.project_id = %s AND t.status IN ('open', 'new', 'pending')
@@ -166,6 +192,14 @@ class ProjectWorker(threading.Thread):
             return None
     
     def get_conversation_history(self, ticket_id):
+        # Use smart history if context manager is available
+        if self.context_manager:
+            try:
+                return self.context_manager.get_smart_history(ticket_id)
+            except Exception as e:
+                self.log(f"Smart history failed, falling back to basic: {e}", "WARNING")
+
+        # Fallback to basic history
         try:
             conn = self.get_db()
             cursor = conn.cursor(dictionary=True)
@@ -352,13 +386,8 @@ class ProjectWorker(threading.Thread):
                 self.session_api_calls
             ))
 
-            # Update ticket totals
-            cursor.execute("""
-                UPDATE tickets
-                SET total_tokens = total_tokens + %s,
-                    total_duration_seconds = total_duration_seconds + %s
-                WHERE id = %s
-            """, (total_tokens, duration, self.current_ticket_id))
+            # Note: Ticket totals are updated in real-time by update_session_tokens()
+            # Only update project totals here (cumulative)
 
             # Update project totals
             cursor.execute("""
@@ -395,6 +424,46 @@ class ProjectWorker(threading.Thread):
             self.log(f"Error creating session: {e}", "ERROR")
             return None
     
+    def update_session_tokens(self):
+        """Update session and ticket tokens in real-time (called after each API response)"""
+        if not self.current_session_id or not self.current_ticket_id:
+            return
+        try:
+            total_tokens = self.session_input_tokens + self.session_output_tokens
+            duration = int((datetime.now() - self.session_start_time).total_seconds()) if self.session_start_time else 0
+
+            conn = self.get_db()
+            cursor = conn.cursor()
+
+            # Update session
+            cursor.execute("""
+                UPDATE execution_sessions
+                SET tokens_used = %s, api_calls = %s
+                WHERE id = %s
+            """, (total_tokens, self.session_api_calls, self.current_session_id))
+
+            # Update ticket totals in real-time
+            cursor.execute("""
+                UPDATE tickets
+                SET total_tokens = (
+                    SELECT COALESCE(SUM(tokens_used), 0)
+                    FROM execution_sessions
+                    WHERE ticket_id = %s
+                ),
+                total_duration_seconds = (
+                    SELECT COALESCE(SUM(TIMESTAMPDIFF(SECOND, started_at, IFNULL(ended_at, NOW()))), 0)
+                    FROM execution_sessions
+                    WHERE ticket_id = %s
+                )
+                WHERE id = %s
+            """, (self.current_ticket_id, self.current_ticket_id, self.current_ticket_id))
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+        except Exception as e:
+            pass  # Don't log errors for real-time updates to avoid spam
+
     def end_session(self, session_id, status, tokens=0):
         # Save usage stats before ending session
         self.save_usage_stats()
@@ -439,6 +508,16 @@ class ProjectWorker(threading.Thread):
 ==========================
 """
 
+        # Smart context from context manager (user prefs, project map, knowledge, extraction)
+        smart_context_str = ""
+        if self.context_manager:
+            try:
+                smart_ctx = self.context_manager.build_full_context(ticket)
+                if smart_ctx.get('system_context'):
+                    smart_context_str = smart_ctx['system_context']
+            except Exception as e:
+                self.log(f"Error building smart context: {e}", "WARNING")
+
         # Project database credentials (auto-created)
         db_info = ""
         if ticket.get('db_name') and ticket.get('db_user'):
@@ -459,7 +538,7 @@ Password: {ticket['db_password']}
 {ticket['project_context']}
 =======================
 """
-        
+
         # Ticket-specific context
         ticket_context = ""
         if ticket.get('ticket_context'):
@@ -468,16 +547,16 @@ Password: {ticket['db_password']}
 {ticket['ticket_context']}
 ======================
 """
-        
+
         # Allowed paths
         allowed_paths = []
         if ticket.get('web_path'): allowed_paths.append(ticket['web_path'])
         if ticket.get('app_path'): allowed_paths.append(ticket['app_path'])
         allowed_str = " and ".join(allowed_paths) if allowed_paths else "/var/www/projects"
-        
+
         system = f"""You are working on project: {ticket['project_name']}
 {paths_str}{tech_info}
-{global_context_str}{db_info}{project_context}{ticket_context}
+{global_context_str}{smart_context_str}{db_info}{project_context}{ticket_context}
 Ticket: {ticket['ticket_number']} - {ticket['title']}
 
 IMPORTANT: You can ONLY create/modify files within: {allowed_str}
@@ -487,9 +566,9 @@ Description:
 {ticket['description']}
 
 Complete this task. When finished, say "TASK COMPLETED" with a summary."""
-        
+
         prompt_parts = [system, "\n--- Conversation History ---\n"]
-        
+
         for msg in history:
             if msg['role'] == 'user':
                 prompt_parts.append(f"\nUser: {msg['content']}")
@@ -500,7 +579,7 @@ Complete this task. When finished, say "TASK COMPLETED" with a summary."""
             elif msg['role'] == 'tool_result':
                 result = msg['content'] or ''
                 prompt_parts.append(f"\n[Result: {result[:200]}...]" if len(result) > 200 else f"\n[Result: {result}]")
-        
+
         prompt_parts.append("\n\nContinue working on this task:")
         return '\n'.join(prompt_parts)
     
@@ -510,14 +589,18 @@ Complete this task. When finished, say "TASK COMPLETED" with a summary."""
             msg_type = data.get('type', '')
 
             if msg_type == 'assistant':
-                # Extract usage data from the message
+                # Extract usage data from the message (incremental in streaming)
                 usage = data.get('message', {}).get('usage', {})
+                self.session_api_calls += 1
+
+                # Accumulate incremental token counts for real-time tracking
                 if usage:
                     self.session_input_tokens += usage.get('input_tokens', 0)
                     self.session_output_tokens += usage.get('output_tokens', 0)
                     self.session_cache_read_tokens += usage.get('cache_read_input_tokens', 0)
                     self.session_cache_creation_tokens += usage.get('cache_creation_input_tokens', 0)
-                    self.session_api_calls += 1
+                    # Update session in real-time
+                    self.update_session_tokens()
 
                 content = ''
                 for block in data.get('message', {}).get('content', []):
@@ -530,8 +613,8 @@ Complete this task. When finished, say "TASK COMPLETED" with a summary."""
                         self.save_log('output', f"🔧 Tool: {block.get('name')}")
 
                 if content:
-                    tokens = usage.get('output_tokens', 0)
-                    self.save_message('assistant', content, tokens=tokens)
+                    # Estimate tokens from content (streaming usage is incremental, not total)
+                    self.save_message('assistant', content)  # Uses len/4 estimation
                     preview = content[:200] + '...' if len(content) > 200 else content
                     self.save_log('output', preview)
 
@@ -539,6 +622,15 @@ Complete this task. When finished, say "TASK COMPLETED" with a summary."""
                         return 'completed'
 
             elif msg_type == 'result':
+                # Result message has the correct TOTAL usage for the session
+                result_usage = data.get('usage', {})
+                if result_usage:
+                    self.session_input_tokens = result_usage.get('input_tokens', 0)
+                    self.session_output_tokens = result_usage.get('output_tokens', 0)
+                    self.session_cache_read_tokens = result_usage.get('cache_read_input_tokens', 0)
+                    self.session_cache_creation_tokens = result_usage.get('cache_creation_input_tokens', 0)
+                    # Final update with correct totals
+                    self.update_session_tokens()
                 result = data.get('result', '')
                 if isinstance(result, dict):
                     result = json.dumps(result)
@@ -557,20 +649,24 @@ Complete this task. When finished, say "TASK COMPLETED" with a summary."""
     
     def run_claude(self, ticket, prompt):
         """Run Claude Code within project directory"""
-        
+
         # Determine working directory
         work_path = ticket.get('web_path') or ticket.get('app_path') or '/var/www/projects'
         work_path = os.path.abspath(work_path)
-        
+
         # Create directories if needed
         if ticket.get('web_path'):
             os.makedirs(ticket['web_path'], exist_ok=True)
         if ticket.get('app_path'):
             os.makedirs(ticket['app_path'], exist_ok=True)
-        
+
+        # Determine AI model: ticket override > project default > sonnet
+        ai_model = ticket.get('ticket_ai_model') or ticket.get('project_ai_model') or 'sonnet'
+        self.log(f"Using AI model: {ai_model}")
+
         cmd = [
             '/home/claude/.local/bin/claude',
-            '--model', 'sonnet',
+            '--model', ai_model,
             '--verbose',
             '--output-format', 'stream-json',
             '--dangerously-skip-permissions',
@@ -589,30 +685,42 @@ Complete this task. When finished, say "TASK COMPLETED" with a summary."""
             
             result = None
             while True:
+                # Check for user commands (non-blocking)
                 new_msgs = self.get_pending_user_messages(ticket['id'])
                 for msg in new_msgs:
                     content = msg['content'].strip()
                     if content == '/skip':
                         process.terminate()
+                        self.save_log('warning', '⏭️ User command: /skip - Ticket paused')
+                        self.save_message('system', '⏭️ Ticket paused by user (/skip)')
                         return 'skipped'
                     elif content == '/done':
                         process.terminate()
+                        self.save_log('info', '✅ User command: /done - Ticket closed')
+                        self.save_message('system', '✅ Ticket closed by user (/done)')
                         return 'completed'
                     elif content == '/stop':
                         process.terminate()
-                        self.save_log('info', 'Stopped by user - waiting for new instructions')
+                        self.save_log('warning', '⏸️ User command: /stop - Waiting for new instructions')
+                        self.save_message('system', '⏸️ Stopped by user (/stop) - Waiting for new instructions')
                         return 'interrupted'
-                
+
                 if not self.running or not self.daemon_ref.running:
                     process.terminate()
                     return 'stopped'
-                
-                line = process.stdout.readline()
-                if not line and process.poll() is not None:
+
+                # Use select with timeout to avoid blocking
+                ready, _, _ = select.select([process.stdout], [], [], 1.0)
+
+                if ready:
+                    line = process.stdout.readline()
+                    if not line and process.poll() is not None:
+                        break
+                    if line:
+                        result = self.parse_claude_output(line) or result
+                elif process.poll() is not None:
+                    # Process finished
                     break
-                
-                if line:
-                    result = self.parse_claude_output(line) or result
                     
                 if self.last_activity:
                     stuck_time = (datetime.now() - self.last_activity).total_seconds()
@@ -668,8 +776,8 @@ Complete this task. When finished, say "TASK COMPLETED" with a summary."""
                     self.log(f"Continuing with user feedback...")
                     continue
                 else:
-                    # No messages yet, keep ticket open for user to add message
-                    self.update_ticket(ticket['id'], 'open')
+                    # No messages yet, wait for user to add instructions
+                    self.update_ticket(ticket['id'], 'awaiting_input')
                     self.end_session(self.current_session_id, 'stopped')
                     self.log(f"⏸️ Stopped: {ticket['ticket_number']} - waiting for user input")
                     break
@@ -694,8 +802,9 @@ Complete this task. When finished, say "TASK COMPLETED" with a summary."""
                 break
 
             elif result == 'skipped':
-                self.update_ticket(ticket['id'], 'open')
+                self.update_ticket(ticket['id'], 'skipped')
                 self.end_session(self.current_session_id, 'skipped')
+                self.log(f"⏭️ Skipped: {ticket['ticket_number']}")
                 break
 
             elif result == 'stuck':
@@ -707,6 +816,24 @@ Complete this task. When finished, say "TASK COMPLETED" with a summary."""
                 self.update_ticket(ticket['id'], 'pending')
                 self.end_session(self.current_session_id, 'stopped')
                 break
+
+            elif result == 'success':
+                # Claude finished without explicit TASK COMPLETED - waiting for user
+                pending = self.get_pending_user_messages(ticket['id'])
+                if pending:
+                    for msg in pending:
+                        content = msg['content'].strip()
+                        if not content.startswith('/'):
+                            self.save_message('user', content)
+                            self.save_log('info', f'User message: {content[:100]}...' if len(content) > 100 else f'User message: {content}')
+                    history = self.get_conversation_history(ticket['id'])
+                    self.log(f"Continuing with user feedback...")
+                    continue
+                else:
+                    self.update_ticket(ticket['id'], 'awaiting_input')
+                    self.end_session(self.current_session_id, 'completed')
+                    self.log(f"✅ Success: {ticket['ticket_number']} - awaiting user input")
+                    break
 
             else:
                 self.update_ticket(ticket['id'], 'failed', str(result))
@@ -741,6 +868,214 @@ Complete this task. When finished, say "TASK COMPLETED" with a summary."""
         self.running = False
 
 
+# ============================================================================
+# WATCHDOG - Monitors tickets for stuck patterns using Haiku
+# ============================================================================
+
+WATCHDOG_INTERVAL = 1800  # Check every 30 minutes
+WATCHDOG_MIN_MESSAGES = 10  # Minimum messages before checking
+WATCHDOG_CHECK_LAST_N = 30  # Analyze last N messages
+
+class Watchdog(threading.Thread):
+    """Background thread that monitors running tickets for stuck patterns"""
+
+    def __init__(self, daemon):
+        super().__init__(daemon=True)
+        self.daemon_ref = daemon
+        self.running = True
+
+    def log(self, message, level="INFO"):
+        self.daemon_ref.log(f"[Watchdog] {message}", level)
+
+    def get_db(self):
+        return self.daemon_ref.get_db()
+
+    def run(self):
+        self.log("Watchdog started - monitoring for stuck tickets")
+
+        while self.running:
+            try:
+                time.sleep(WATCHDOG_INTERVAL)
+                if not self.running:
+                    break
+                self.check_running_tickets()
+            except Exception as e:
+                self.log(f"Error: {e}", "ERROR")
+
+    def check_running_tickets(self):
+        """Check all in_progress tickets for stuck patterns"""
+        try:
+            conn = self.get_db()
+            cursor = conn.cursor(dictionary=True)
+
+            # Get tickets that have been in_progress for a while
+            cursor.execute("""
+                SELECT t.id, t.ticket_number, t.title, p.name as project_name,
+                       (SELECT COUNT(*) FROM conversation_messages WHERE ticket_id = t.id) as msg_count,
+                       (SELECT SUM(tokens_used) FROM execution_sessions WHERE ticket_id = t.id AND status = 'running') as running_tokens
+                FROM tickets t
+                JOIN projects p ON t.project_id = p.id
+                WHERE t.status = 'in_progress'
+            """)
+            tickets = cursor.fetchall()
+            cursor.close()
+            conn.close()
+
+            for ticket in tickets:
+                if ticket['msg_count'] >= WATCHDOG_MIN_MESSAGES:
+                    self.analyze_ticket(ticket)
+
+        except Exception as e:
+            self.log(f"Error checking tickets: {e}", "ERROR")
+
+    def analyze_ticket(self, ticket):
+        """Use Haiku to analyze if a ticket is stuck"""
+        try:
+            conn = self.get_db()
+            cursor = conn.cursor(dictionary=True)
+
+            # Get last N messages
+            cursor.execute("""
+                SELECT role, content, created_at
+                FROM conversation_messages
+                WHERE ticket_id = %s
+                ORDER BY created_at DESC
+                LIMIT %s
+            """, (ticket['id'], WATCHDOG_CHECK_LAST_N))
+            messages = cursor.fetchall()
+            cursor.close()
+            conn.close()
+
+            if not messages:
+                return
+
+            # Reverse to chronological order
+            messages = list(reversed(messages))
+
+            # Build conversation summary for analysis
+            conversation = []
+            for msg in messages:
+                role = msg['role'].upper()
+                content = msg['content'] or "[tool use]"
+                # Truncate long messages
+                if len(content) > 500:
+                    content = content[:500] + "..."
+                conversation.append(f"[{role}]: {content}")
+
+            conversation_text = "\n".join(conversation)
+
+            # Call Haiku for analysis
+            prompt = f"""Analyze this AI assistant conversation and determine if it's stuck in an unproductive loop.
+
+TICKET: {ticket['ticket_number']} - {ticket['title']}
+PROJECT: {ticket['project_name']}
+MESSAGES ANALYZED: {len(messages)}
+TOKENS USED: {ticket.get('running_tokens', 0) or 0}
+
+RECENT CONVERSATION:
+{conversation_text}
+
+SIGNS OF BEING STUCK:
+1. Same error appearing repeatedly without resolution
+2. AI trying the same fix multiple times
+3. Tests failing repeatedly with same errors
+4. Circular behavior (edit → test → fail → same edit)
+5. AI expressing uncertainty or asking for help repeatedly
+6. No meaningful progress in last several messages
+
+RESPOND WITH EXACTLY ONE LINE:
+- "CONTINUE" if the AI is making progress
+- "STUCK: <brief reason>" if the AI appears stuck
+
+Your response:"""
+
+            result = subprocess.run(
+                ['/home/claude/.local/bin/claude', '--model', 'haiku', '--print'],
+                input=prompt,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                cwd='/tmp'
+            )
+
+            if result.returncode == 0 and result.stdout:
+                response = result.stdout.strip().split('\n')[0]  # First line only
+
+                if response.startswith('STUCK:'):
+                    reason = response[6:].strip()
+                    self.mark_ticket_stuck(ticket, reason)
+                else:
+                    self.log(f"Ticket {ticket['ticket_number']}: OK - making progress")
+
+        except subprocess.TimeoutExpired:
+            self.log(f"Haiku timeout analyzing {ticket['ticket_number']}", "WARNING")
+        except Exception as e:
+            self.log(f"Error analyzing {ticket['ticket_number']}: {e}", "ERROR")
+
+    def mark_ticket_stuck(self, ticket, reason):
+        """Mark a ticket as stuck and notify"""
+        self.log(f"STUCK DETECTED: {ticket['ticket_number']} - {reason}", "WARNING")
+
+        try:
+            conn = self.get_db()
+            cursor = conn.cursor()
+
+            # Update ticket status
+            cursor.execute("""
+                UPDATE tickets SET status = 'stuck', updated_at = NOW()
+                WHERE id = %s
+            """, (ticket['id'],))
+
+            # Add system message explaining why
+            stuck_message = f"[WATCHDOG] Ticket marked as stuck: {reason}\n\nThe AI appears to be in an unproductive loop. Human intervention may be required."
+            cursor.execute("""
+                INSERT INTO conversation_messages (ticket_id, role, content, created_at)
+                VALUES (%s, 'system', %s, NOW())
+            """, (ticket['id'], stuck_message))
+
+            # Stop any running sessions for this ticket
+            cursor.execute("""
+                UPDATE execution_sessions SET status = 'stuck', ended_at = NOW()
+                WHERE ticket_id = %s AND status = 'running'
+            """, (ticket['id'],))
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+
+            # Send email notification
+            self.daemon_ref.send_email(
+                f"Ticket Stuck: {ticket['ticket_number']}",
+                f"Ticket: {ticket['ticket_number']} - {ticket['title']}\n"
+                f"Project: {ticket['project_name']}\n"
+                f"Reason: {reason}\n\n"
+                f"The AI has been detected in an unproductive loop and the ticket has been paused.\n"
+                f"Please review and provide guidance to continue."
+            )
+
+            # Broadcast to web UI
+            try:
+                data = json.dumps({
+                    'type': 'ticket_stuck',
+                    'ticket_id': ticket['id'],
+                    'reason': reason
+                }).encode('utf-8')
+                req = urllib.request.Request(
+                    f"{WEB_APP_URL}/api/internal/broadcast",
+                    data=data,
+                    headers={'Content-Type': 'application/json'}
+                )
+                urllib.request.urlopen(req, timeout=2)
+            except:
+                pass
+
+        except Exception as e:
+            self.log(f"Error marking ticket stuck: {e}", "ERROR")
+
+    def stop(self):
+        self.running = False
+
+
 class ClaudeDaemon:
     """Main daemon - manages project workers"""
 
@@ -752,6 +1087,18 @@ class ClaudeDaemon:
         self.workers_lock = threading.Lock()
         self.max_parallel = int(self.config.get('MAX_PARALLEL_PROJECTS', MAX_PARALLEL_PROJECTS))
         self.global_context = self.load_global_context()
+
+        # Initialize Smart Context Manager
+        self.context_manager = None
+        if SMART_CONTEXT_ENABLED:
+            try:
+                self.context_manager = SmartContextManager(self.db_pool, self.log)
+                self.log("Smart Context Manager initialized")
+            except Exception as e:
+                self.log(f"Failed to initialize Smart Context Manager: {e}", "WARNING")
+
+        # Initialize Watchdog (will be started in run())
+        self.watchdog = None
 
     def load_global_context(self):
         """Load global context that applies to all projects"""
@@ -984,6 +1331,11 @@ class ClaudeDaemon:
         # Recover any orphaned tickets from previous run
         self.recover_orphaned_tickets()
 
+        # Start Watchdog thread
+        self.watchdog = Watchdog(self)
+        self.watchdog.start()
+        self.log("Watchdog thread started")
+
         while self.running:
             try:
                 self.cleanup_dead_workers()
@@ -1004,7 +1356,8 @@ class ClaudeDaemon:
                                 project['id'],
                                 project['name'],
                                 project['work_path'],
-                                self.global_context
+                                self.global_context,
+                                self.context_manager  # Pass Smart Context Manager
                             )
                             worker.start()
                             self.workers[project['id']] = worker
@@ -1019,11 +1372,16 @@ class ClaudeDaemon:
                 self.log(f"Error: {e}", "ERROR")
                 time.sleep(POLL_INTERVAL)
         
+        # Stop Watchdog
+        if self.watchdog:
+            self.log("Stopping Watchdog...")
+            self.watchdog.stop()
+
         self.log("Stopping all workers...")
         with self.workers_lock:
             for worker in self.workers.values():
                 worker.stop()
-        
+
         for worker in self.workers.values():
             worker.join(timeout=5)
         

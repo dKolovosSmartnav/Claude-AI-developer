@@ -110,6 +110,7 @@ CREATE TABLE `execution_sessions` (
   `tokens_used` int DEFAULT '0',
   `started_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `ended_at` timestamp NULL DEFAULT NULL,
+  `api_calls` int DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `ticket_id` (`ticket_id`),
   CONSTRAINT `execution_sessions_ibfk_1` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE SET NULL

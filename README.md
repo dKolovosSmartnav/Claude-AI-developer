@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-2.27.0-green.svg" alt="Version"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-2.32.0-green.svg" alt="Version"></a>
   <img src="https://img.shields.io/badge/Ubuntu-22.04%20|%2024.04-orange.svg" alt="Ubuntu">
   <a href="https://anthropic.com"><img src="https://img.shields.io/badge/Powered%20by-Claude%20AI-blueviolet.svg" alt="Claude AI"></a>
   <a href="https://github.com/fotsakir/Claude-AI-developer/stargazers"><img src="https://img.shields.io/github/stars/fotsakir/Claude-AI-developer?style=social" alt="Stars"></a>
@@ -62,6 +62,39 @@ This is not science fiction. This is happening now. And this project lets you ex
 
 ## Key Features
 
+### Intelligent AI Features
+
+#### SmartContext - Intelligent Context Management
+Claude automatically understands your project structure without being told:
+- **Auto-detects** framework, language, and architecture
+- **Finds relevant files** based on the task at hand
+- **Builds minimal context** - only includes what's needed
+- **Learns patterns** from your codebase conventions
+- **Reduces token usage** by up to 70% vs. sending entire codebase
+
+#### AI Failsafe (Watchdog)
+Built-in protection against runaway AI sessions:
+- **Monitors all active tickets** every 30 minutes
+- **Detects stuck patterns**: repeated errors, circular behavior, no progress
+- **Auto-pauses problematic tickets** before excessive token usage
+- **Email notifications** when issues detected
+- **Explains why** it stopped in the conversation
+
+#### AI Project Manager (Blueprint Planner)
+Let Claude help you design your project before coding:
+- **"Plan with AI"** button on Projects page
+- **Guided questionnaire** - Claude asks about requirements
+- **Generates complete blueprint**: tech stack, database schema, API design, file structure
+- **Feature breakdown** with milestones
+- **Copy directly** to new project description
+
+#### Claude Assistant
+Interactive Claude terminal with full control:
+- **AI Model Selection**: Choose Opus, Sonnet, or Haiku per session
+- **Popup Window**: Open in separate window for multi-monitor setups
+- **Direct Access**: Chat with Claude outside of ticket workflow
+- **Full Terminal**: Real PTY with color support
+
 ### Core AI Features
 - **Autonomous AI Agent** - Claude AI works on tickets independently, writing real code
 - **Multi-Project Management** - Handle multiple projects with isolated databases
@@ -71,13 +104,20 @@ This is not science fiction. This is happening now. And this project lets you ex
 
 ### Ticket Management
 - **Ticket Workflow** - Structured flow: Open → In Progress → Awaiting Input → Done
-- **Kill Switch Commands** - Control Claude while working:
-  - `/stop` - Pause and wait for correction
-  - `/skip` - Stop and reopen ticket
-  - `/done` - Force complete ticket
+- **Kill Switch Commands** - Instant control while Claude is working:
+  - `/stop` - Pause and wait for correction (shows immediately)
+  - `/skip` - Stop and reopen ticket (shows immediately)
+  - `/done` - Force complete ticket (shows immediately)
 - **Message Queue** - Messages sent during execution are read when Claude finishes
 - **Auto-Close** - Tickets auto-close after 7 days in awaiting input
 - **Search** - Search across tickets, projects, and history
+
+### Web Terminal
+Full Linux terminal in your browser:
+- **Real shell access** via WebSocket
+- **Popup support** for multi-monitor setups
+- **Full sudo access** for system administration
+- **256-color support** with xterm.js
 
 ### Backup & Restore
 - **Auto Backup on Open** - Project automatically backed up when ticket starts
@@ -130,7 +170,7 @@ This is not science fiction. This is happening now. And this project lets you ex
 ```bash
 # Download, extract, and run
 cd /root
-unzip fotios-claude-system-2.27.0.zip
+unzip fotios-claude-system-2.32.0.zip
 cd fotios-claude-system
 chmod +x setup.sh && ./setup.sh
 
@@ -150,7 +190,7 @@ The installer automatically sets up:
 ```bash
 # Download new version
 cd /root
-unzip fotios-claude-system-2.27.0.zip
+unzip fotios-claude-system-2.32.0.zip
 cd fotios-claude-system
 
 # Preview changes (recommended)

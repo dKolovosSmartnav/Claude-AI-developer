@@ -240,6 +240,12 @@
             color: var(--text-primary);
         }
 
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
         /* Grid */
         .grid {
             display: grid;
@@ -573,6 +579,7 @@
             <a href="/projects" class="active">Projects</a>
             <a href="/tickets">Tickets</a>
             <a href="/console">Console</a>
+            <a href="/terminal">Terminal</a>
             <a href="/history">History</a>
         </div>
         <div class="nav-right">
@@ -591,6 +598,7 @@
                     <input type="checkbox" id="showArchived" onchange="toggleArchived()">
                     Show Archived
                 </label>
+                <button class="btn btn-secondary" onclick="openBlueprintPlanner()">Plan with AI</button>
                 <button class="btn btn-primary" onclick="openModal()">+ New Project</button>
             </div>
         </div>
@@ -706,6 +714,19 @@
                 </div>
 
                 <div class="form-section">
+                    <h4>AI Model</h4>
+                    <div class="form-group">
+                        <label>Default AI Model</label>
+                        <select name="ai_model">
+                            <option value="sonnet" selected>Sonnet (Recommended)</option>
+                            <option value="opus">Opus (Most Powerful)</option>
+                            <option value="haiku">Haiku (Fastest)</option>
+                        </select>
+                        <small>Tickets can override this setting</small>
+                    </div>
+                </div>
+
+                <div class="form-section">
                     <h4>Project Context</h4>
                     <div class="form-group">
                         <label>Context for Claude</label>
@@ -803,6 +824,19 @@
                 </div>
 
                 <div class="form-section">
+                    <h4>AI Model</h4>
+                    <div class="form-group">
+                        <label>Default AI Model</label>
+                        <select name="ai_model" id="edit_ai_model">
+                            <option value="sonnet">Sonnet (Recommended)</option>
+                            <option value="opus">Opus (Most Powerful)</option>
+                            <option value="haiku">Haiku (Fastest)</option>
+                        </select>
+                        <small>Tickets can override this setting</small>
+                    </div>
+                </div>
+
+                <div class="form-section">
                     <h4>Project Context</h4>
                     <div class="form-group">
                         <label>Context for Claude</label>
@@ -835,6 +869,7 @@
                 web_path: form.web_path.value,
                 app_path: form.app_path.value,
                 context: form.context.value,
+                ai_model: form.ai_model.value,
                 skip_database: form.skip_database.checked
             };
 
@@ -873,6 +908,7 @@
                 document.getElementById('edit_db_user').value = p.db_user || '';
                 document.getElementById('edit_db_password').value = p.db_password || '';
                 document.getElementById('edit_context').value = p.context || '';
+                document.getElementById('edit_ai_model').value = p.ai_model || 'sonnet';
 
                 document.getElementById('editModal').classList.add('active');
             } catch (err) {
@@ -895,7 +931,8 @@
                 db_name: form.db_name.value,
                 db_user: form.db_user.value,
                 db_password: form.db_password.value,
-                context: form.context.value
+                context: form.context.value,
+                ai_model: form.ai_model.value
             };
 
             try {
@@ -942,6 +979,15 @@
                 const matchesArchived = showArchived || !isArchived;
                 card.style.display = (matchesSearch && matchesArchived) ? 'block' : 'none';
             });
+        }
+
+        function openBlueprintPlanner() {
+            const width = 1100;
+            const height = 750;
+            const left = (screen.width - width) / 2;
+            const top = (screen.height - height) / 2;
+            window.open('/claude-assistant?mode=blueprint&popup=1', 'blueprint_planner',
+                `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no`);
         }
     </script>
 </body>

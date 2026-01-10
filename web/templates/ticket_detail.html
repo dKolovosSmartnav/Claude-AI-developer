@@ -197,6 +197,9 @@
         .message.system { margin: 12px auto; max-width: 90%; text-align: center; }
 
         .message-header { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+        .message-delete { opacity: 0; background: none; border: none; color: var(--accent-red); cursor: pointer; padding: 2px 6px; font-size: 11px; border-radius: 4px; transition: all 0.2s; margin-left: auto; }
+        .message-delete:hover { background: rgba(239, 68, 68, 0.15); opacity: 1; }
+        .message:hover .message-delete { opacity: 0.6; }
         .role { font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
         .role.user { color: var(--accent-cyan); }
         .role.assistant { color: var(--accent-green); }
@@ -469,6 +472,7 @@
             <a href="/projects">Projects</a>
             <a href="/tickets" class="active">Tickets</a>
             <a href="/console">Console</a>
+            <a href="/terminal">Terminal</a>
             <a href="/history">History</a>
         </div>
         <div class="nav-right">
@@ -523,7 +527,7 @@
                 <div class="conversation" id="conversation">
                     {% if messages %}
                         {% for m in messages %}
-                        <div class="message {{ m.role }}" data-content="{{ m.content|e if m.content else '' }}">
+                        <div class="message {{ m.role }}" data-content="{{ m.content|e if m.content else '' }}" data-message-id="{{ m.id }}">
                             <div class="message-header">
                                 <span class="role {{ m.role }}">
                                     {% if m.role == 'user' %}User
@@ -533,6 +537,9 @@
                                     {% else %}System{% endif %}
                                 </span>
                                 <span class="time" data-utc="{{ m.created_at.isoformat() + 'Z' if m.created_at else '' }}">{{ m.created_at.strftime('%H:%M:%S') if m.created_at else '' }}</span>
+                                {% if ticket.status not in ['done', 'failed'] %}
+                                <button class="message-delete" onclick="deleteMessage({{ m.id }})" title="Delete message">Delete</button>
+                                {% endif %}
                             </div>
                             <div class="message-content">
                                 {% if m.role in ['tool_use', 'tool_result'] %}
@@ -604,6 +611,21 @@
                         <div>Priority: <strong>{{ ticket.priority|upper }}</strong></div>
                         <div>Created: {{ ticket.created_at.strftime('%Y-%m-%d %H:%M') if ticket.created_at else 'N/A' }}</div>
                         <div>Path: <code>{{ ticket.project_path }}</code></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>AI Model</h3>
+                <div class="ticket-info" style="padding:12px">
+                    <div class="form-group" style="margin:0">
+                        <select id="ai-model-select" onchange="updateAiModel(this.value)" style="width:100%;background:var(--bg-secondary);border:1px solid var(--border-subtle);color:var(--text-primary);padding:10px 14px;border-radius:8px;font-size:13px;cursor:pointer" {% if ticket.status in ['done', 'failed'] %}disabled{% endif %}>
+                            <option value="" {% if not ticket.ai_model %}selected{% endif %}>Use Project Default ({{ ticket.project_ai_model or 'sonnet' }})</option>
+                            <option value="sonnet" {% if ticket.ai_model == 'sonnet' %}selected{% endif %}>Sonnet</option>
+                            <option value="opus" {% if ticket.ai_model == 'opus' %}selected{% endif %}>Opus (Most Powerful)</option>
+                            <option value="haiku" {% if ticket.ai_model == 'haiku' %}selected{% endif %}>Haiku (Fastest)</option>
+                        </select>
+                        <p style="color:var(--text-muted);font-size:11px;margin-top:8px">Changes take effect on next AI request</p>
                     </div>
                 </div>
             </div>
@@ -706,6 +728,11 @@
         socket.on('connect', () => { socket.emit('join_ticket', {ticket_id: ticketId}); });
 
         const shownMessageIds = new Set();
+        // Initialize with IDs of messages already rendered on page load
+        document.querySelectorAll('.message[data-message-id]').forEach(el => {
+            const id = parseInt(el.dataset.messageId);
+            if (id) shownMessageIds.add(id);
+        });
         let lastUserMessageTime = 0;
 
         socket.on('new_message', (msg) => {
@@ -728,6 +755,7 @@
             const div = document.createElement('div');
             div.className = `message ${msg.role}`;
             if (msg.content) div.dataset.content = msg.content;
+            if (msg.id) div.dataset.messageId = msg.id;
 
             const time = msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : '';
             let roleLabel = 'System';
@@ -752,10 +780,14 @@
                 content = `<div class="formatted-content">${displayContent}</div>`;
             }
 
+            const deleteBtn = ticketStatus !== 'done' && ticketStatus !== 'failed' && msg.id ?
+                `<button class="message-delete" onclick="deleteMessage(${msg.id})" title="Delete message">Delete</button>` : '';
+
             div.innerHTML = `
                 <div class="message-header">
                     <span class="role ${msg.role}">${roleLabel}</span>
                     <span class="time">${time}</span>
+                    ${deleteBtn}
                 </div>
                 <div class="message-content">${content}</div>
             `;
@@ -801,6 +833,39 @@
         }
 
         function sendCommand(cmd) { input.value = cmd; sendMessage(); }
+
+        async function deleteMessage(messageId) {
+            if (!confirm('Delete this message? This will also adjust the token count.')) return;
+            try {
+                const resp = await fetch(`/api/message/${messageId}`, { method: 'DELETE' });
+                const result = await resp.json();
+                if (result.success) {
+                    const msgEl = document.querySelector(`[data-message-id="${messageId}"]`);
+                    if (msgEl) msgEl.remove();
+                    loadTicketStats();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (e) {
+                alert('Error deleting message');
+            }
+        }
+
+        async function updateAiModel(model) {
+            try {
+                const resp = await fetch(`/api/ticket/${ticketId}/settings`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ ai_model: model || null })
+                });
+                const result = await resp.json();
+                if (!result.success) {
+                    alert('Error: ' + result.message);
+                }
+            } catch (e) {
+                alert('Error updating AI model');
+            }
+        }
 
         async function closeTicket(reason) {
             if (!confirm('Close this ticket?')) return;

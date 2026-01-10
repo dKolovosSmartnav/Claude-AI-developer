@@ -154,6 +154,21 @@
             cursor: not-allowed;
         }
 
+        .model-select {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .model-select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
         .terminal-wrapper {
             flex: 1;
             padding: 16px;
@@ -233,9 +248,18 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
+
+        /* Popup mode */
+        body.popup-mode .header {
+            padding: 10px 16px;
+        }
+
+        body.popup-mode .header h1 {
+            font-size: 1rem;
+        }
     </style>
 </head>
-<body>
+<body class="{% if popup %}popup-mode{% endif %}">
     <div class="aurora-bg">
         <div class="aurora-blob"></div>
         <div class="aurora-blob"></div>
@@ -243,11 +267,24 @@
     </div>
 
     <div class="header">
-        <h1>Claude Assistant</h1>
+        <h1>{% if mode == 'blueprint' %}Project Blueprint Planner{% else %}Claude Assistant{% endif %}{% if popup %} (Popup){% endif %}</h1>
         <div class="header-controls">
+            <select class="model-select" id="modelSelect">
+                <option value="sonnet" selected>Sonnet (Default)</option>
+                <option value="opus">Opus</option>
+                <option value="haiku">Haiku</option>
+            </select>
             <button class="btn btn-primary" id="startBtn" onclick="startClaude()">Start Session</button>
             <button class="btn btn-danger" id="stopBtn" onclick="stopClaude()" disabled>Stop</button>
+            {% if not popup %}
+            <button class="btn btn-back" onclick="openPopup()" title="Open in new window">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+                </svg>
+                New Window
+            </button>
             <a href="/dashboard" class="btn btn-back">Back to Dashboard</a>
+            {% endif %}
         </div>
     </div>
 
@@ -271,17 +308,20 @@
             <span id="statusText">Ready</span>
         </div>
         <div>
-            <span id="userInfo">{{ user }}</span>
+            <span id="modelInfo">Model: Sonnet</span> | <span id="userInfo">{{ user }}</span>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
     <script>
+        const isPopup = {{ 'true' if popup else 'false' }};
+        const mode = '{{ mode }}';
         let term = null;
         let fitAddon = null;
         let sessionId = null;
         let pollInterval = null;
+        let blueprintSent = false;
 
         function initTerminal() {
             term = new Terminal({
@@ -303,7 +343,14 @@
             term.open(document.getElementById('terminal'));
             fitAddon.fit();
 
-            term.writeln('\x1b[38;5;246m Click "Start Session" to launch Claude \x1b[0m');
+            if (mode === 'blueprint') {
+                term.writeln('\x1b[38;5;141m === Project Blueprint Planner === \x1b[0m');
+                term.writeln('');
+                term.writeln('\x1b[38;5;246m Click "Start Session" to begin designing your project. \x1b[0m');
+                term.writeln('\x1b[38;5;246m Claude will guide you through each section of the blueprint. \x1b[0m');
+            } else {
+                term.writeln('\x1b[38;5;246m Select AI model and click "Start Session" to launch Claude \x1b[0m');
+            }
             term.writeln('');
 
             term.onData(data => {
@@ -318,12 +365,30 @@
             });
         }
 
+        function openPopup() {
+            const width = 1000;
+            const height = 700;
+            const left = (screen.width - width) / 2;
+            const top = (screen.height - height) / 2;
+            window.open('/claude-assistant?popup=1', 'claude_assistant_popup',
+                `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no`);
+        }
+
         async function startClaude() {
+            const model = document.getElementById('modelSelect').value;
             document.getElementById('startBtn').disabled = true;
+            document.getElementById('modelSelect').disabled = true;
             setStatus('Starting...', true);
 
+            const modelNames = { opus: 'Opus', sonnet: 'Sonnet', haiku: 'Haiku' };
+            document.getElementById('modelInfo').textContent = 'Model: ' + modelNames[model];
+
             try {
-                const resp = await fetch('/api/claude/chat/start', { method: 'POST' });
+                const resp = await fetch('/api/claude/chat/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: model })
+                });
                 const data = await resp.json();
 
                 if (data.success) {
@@ -332,19 +397,30 @@
                     term.focus();
 
                     document.getElementById('stopBtn').disabled = false;
-                    setStatus('Running', true);
+                    setStatus('Running (' + modelNames[model] + ')', true);
 
                     resizeTerminal();
                     pollInterval = setInterval(pollOutput, 100);
+
+                    // If blueprint mode, auto-send the initial prompt after Claude is ready
+                    if (mode === 'blueprint' && !blueprintSent) {
+                        blueprintSent = true;
+                        setTimeout(() => {
+                            const prompt = 'Read the file /home/claude/PROJECT_TEMPLATE.md and help me create a blueprint for a new project. Guide me through each section step by step, asking questions to understand my requirements. Start by asking what kind of project I want to build.';
+                            sendInput(prompt + '\n');
+                        }, 2000);
+                    }
                 } else {
                     setStatus('Failed to start', false);
                     term.writeln('\x1b[31mFailed to start: ' + (data.error || 'Unknown error') + '\x1b[0m');
                     document.getElementById('startBtn').disabled = false;
+                    document.getElementById('modelSelect').disabled = false;
                 }
             } catch (e) {
                 setStatus('Network error', false);
                 term.writeln('\x1b[31mNetwork error: ' + e.message + '\x1b[0m');
                 document.getElementById('startBtn').disabled = false;
+                document.getElementById('modelSelect').disabled = false;
             }
         }
 
@@ -363,6 +439,7 @@
                     stopPolling();
                     document.getElementById('startBtn').disabled = false;
                     document.getElementById('stopBtn').disabled = true;
+                    document.getElementById('modelSelect').disabled = false;
                     setStatus('Session ended', false);
                     term.writeln('\n\x1b[38;5;246m Session ended. Click "Start Session" to begin again. \x1b[0m');
                 }
@@ -414,6 +491,7 @@
             }
             document.getElementById('startBtn').disabled = false;
             document.getElementById('stopBtn').disabled = true;
+            document.getElementById('modelSelect').disabled = false;
             setStatus('Stopped', false);
             term.writeln('\n\x1b[38;5;246m Session stopped. \x1b[0m');
         }

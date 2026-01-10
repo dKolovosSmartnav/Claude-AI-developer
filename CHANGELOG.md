@@ -5,6 +5,93 @@ All notable changes to the Fotios Claude System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.32.0] - 2026-01-10
+
+### Added
+- **Web Terminal**: Full Linux terminal in the browser
+  - New "Terminal" menu item in navigation
+  - Real-time shell access via WebSocket
+  - xterm.js with 256-color support
+  - Popup window support for multi-monitor setups
+  - Runs as user `claude` with sudo access
+  - Auto-cleanup on disconnect
+- **Claude Assistant Enhancements**:
+  - AI model selection (Opus/Sonnet/Haiku) with Sonnet as default
+  - Popup window support ("New Window" button)
+  - Model indicator in status bar
+  - Model locked during active session
+
+## [2.31.0] - 2026-01-10
+
+### Added
+- **Instant Command Feedback**: Commands (/stop, /skip, /done) show immediately
+  - Messages appear instantly in both ticket chat and console
+  - No more waiting for page refresh or polling
+  - Log entries with emoji indicators (✅ ⏸️ ⏭️)
+- **Console Real-time Updates**: Console now receives all messages live
+  - Shows messages from all active tickets via WebSocket
+  - Displays ticket number badge for each message
+  - Raw log view shows command logs instantly
+- **Duplicate Message Prevention**: Fixed message display issues
+  - Prevents duplicate messages when commands are sent
+  - Proper tracking of shown message IDs
+
+### Fixed
+- Messages no longer disappear after sending commands
+- Console now properly receives broadcasts from ticket rooms
+
+## [2.30.0] - 2026-01-10
+
+### Added
+- **AI Model Selection**: Choose between Opus, Sonnet, or Haiku per project/ticket
+  - Projects have default AI model (defaults to Sonnet)
+  - Tickets can override project's model or inherit it
+  - Model selection available during creation and can be changed later
+  - Changes take effect on the next AI request
+- **Message Delete**: Ability to delete conversation messages
+  - Removes message from history
+  - Adjusts ticket token count accordingly
+  - Useful for removing incorrect or confusing messages
+
+### Database
+- Added `ai_model` column to `projects` table (enum: opus/sonnet/haiku, default: sonnet)
+- Added `ai_model` column to `tickets` table (nullable, inherits from project if null)
+
+## [2.29.0] - 2026-01-10
+
+### Added
+- **Watchdog AI Monitor**: Background thread that detects stuck tickets
+  - Uses Claude Haiku to analyze conversation patterns every 30 minutes
+  - Detects: repeated errors, circular behavior, no progress, failed tests
+  - Auto-marks tickets as 'stuck' when problems detected
+  - Sends email notification and WebSocket broadcast to UI
+  - Adds system message explaining why ticket was stopped
+  - Prevents runaway token consumption on long-running projects
+
+### Changed
+- Watchdog checks tickets with 10+ messages only (avoids false positives)
+- Analyzes last 30 messages for pattern detection
+
+## [2.28.0] - 2026-01-10
+
+### Added
+- **Real-time Token Tracking**: Tokens now update during session execution
+  - Dashboard shows running session tokens in Today/Week/Month/All Time stats
+  - Ticket view shows live token count without waiting for session to end
+  - API calls tracked in real-time via new `api_calls` column in `execution_sessions`
+- **User Message Token Counting**: User messages now count toward ticket totals
+  - UTF-8 byte-based estimation: `len(text.encode('utf-8')) // 4`
+  - Accurate for Greek/Unicode text (2 bytes per Greek character)
+  - Updates ticket total immediately when message is sent
+- **Smart Context Important Notes**: Extract user instructions/warnings from conversations
+  - Semantic extraction using Claude Haiku
+  - Captures rules, warnings, preferences, and constraints
+  - Persisted and shown in future sessions
+
+### Fixed
+- **Token Double-counting**: Removed duplicate ticket token updates
+- **Dashboard Stats**: Now includes running sessions in all time periods
+
 ## [2.27.3] - 2026-01-10
 
 ### Fixed
