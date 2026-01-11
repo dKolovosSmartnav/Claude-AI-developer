@@ -64,6 +64,47 @@ This context applies to ALL projects processed by Claude.
   - Browser path: Managed by Playwright
   - To run headless tests, no additional installation needed
 
+## AI Behavior Guidelines
+
+### Ask Questions Before Starting
+If the task description is unclear or has multiple possible interpretations:
+1. **Ask clarifying questions** before writing any code
+2. List what you understand and what you need to know
+3. Wait for user response before proceeding
+4. This saves time and produces better results
+
+Example: "Before I start, I'd like to clarify a few things: 1) Should the form include email validation? 2) Do you want the data saved to the database or just displayed?"
+
+### Visual Verification with Playwright
+You have Playwright with Chromium available for visual testing. **USE IT** when:
+1. User says something "doesn't look right" or "isn't displaying correctly"
+2. User mentions layout, styling, or visual issues
+3. You need to verify your changes visually
+4. User explicitly asks you to "see" or "check" the page
+
+**How to use Playwright for screenshots:**
+```python
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True)
+    page = browser.new_page(viewport={'width': 1280, 'height': 720})
+    page.goto('https://localhost:9867/project-path/')
+    page.screenshot(path='/tmp/screenshot.png')
+    browser.close()
+```
+
+Then read the screenshot to see what the user sees. This helps you:
+- Understand visual bugs without asking the user to describe them
+- Verify your CSS/layout changes work correctly
+- See exactly what the user is experiencing
+
+### When User Says "It Doesn't Look Right"
+1. **Take a screenshot first** with Playwright
+2. Analyze the visual issue
+3. Fix and take another screenshot to verify
+4. Don't ask the user to describe what's wrong - see it yourself
+
 ## Important Rules
 
 1. **Check before installing**: Most tools are already installed. Always verify with `which [tool]` or `[tool] --version` before attempting installation

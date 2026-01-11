@@ -598,6 +598,9 @@
                        {% if ticket.status in ['done', 'failed'] %}disabled{% endif %} />
                 <button onclick="sendMessage()" id="send-btn"
                         {% if ticket.status in ['done', 'failed'] %}disabled{% endif %}>Send</button>
+                <button onclick="seeWithEyes()" id="eyes-btn" title="Ask Claude to take a screenshot and see the page"
+                        style="background:var(--accent-cyan);color:#000;font-weight:600"
+                        {% if ticket.status in ['done', 'failed'] %}disabled{% endif %}>👁️ See</button>
             </div>
         </div>
 
@@ -846,6 +849,17 @@
         }
 
         function sendCommand(cmd) { input.value = cmd; sendMessage(); }
+
+        function seeWithEyes() {
+            const previewUrl = '{{ ticket.preview_url or "" }}';
+            let message = 'Use Playwright to take a screenshot of the project page and analyze what you see. ';
+            if (previewUrl) {
+                message += `The URL is: ${previewUrl}. `;
+            }
+            message += 'Look at the current state visually, describe what you see, and identify any issues.';
+            input.value = message;
+            sendMessage();
+        }
 
         async function deleteMessage(messageId) {
             if (!confirm('Delete this message? This will also adjust the token count.')) return;

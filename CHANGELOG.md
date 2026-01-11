@@ -5,6 +5,17 @@ All notable changes to the Fotios Claude System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.39.0] - 2026-01-11
+
+### Added
+- **"See with your eyes" button**: New button in ticket detail page
+  - Claude takes a screenshot using Playwright and analyzes the page visually
+  - No need to describe visual issues - Claude sees them directly
+- **AI Behavior Guidelines**: New section in global context
+  - Claude asks clarifying questions before starting unclear tasks
+  - Automatic Playwright usage when user mentions visual issues
+  - Instructions for visual verification workflow
+
 ## [2.38.0] - 2026-01-11
 
 ### Changed
