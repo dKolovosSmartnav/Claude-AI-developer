@@ -5,6 +5,23 @@ All notable changes to the Fotios Claude System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.42.0] - 2026-01-12
+
+### Added
+- **Multimedia Tools**: Full suite of image, audio, video, and PDF processing tools
+  - ffmpeg, ImageMagick, tesseract-ocr (English + Greek), sox, poppler-utils
+  - Python: Pillow, OpenCV, pytesseract, pdf2image, pydub
+- **docs/INSTALLED_PACKAGES.md**: Complete reference for all installed tools with examples
+- **Backup Notification**: UI message when backup is created before ticket processing
+- **upgrade.sh**: Auto-installs missing packages during upgrade
+
+### Changed
+- **AI Knowledge Base**: Updated PLATFORM_KNOWLEDGE.md and global-context.md with multimedia tools
+- **README.md**: Added link to Installed Packages documentation
+
+### Fixed
+- **Admin Password**: setup.sh now uses password from install.conf (was using hardcoded hash)
+
 ## [2.41.1] - 2026-01-11
 
 ### Fixed
