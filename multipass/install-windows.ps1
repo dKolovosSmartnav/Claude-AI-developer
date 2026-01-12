@@ -99,10 +99,44 @@ if (-not $multipass) {
 # Configure Multipass to use VirtualBox if needed
 if ($needsVirtualBox) {
     Write-Host "      Configuring Multipass to use VirtualBox..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 2
-    & multipass set local.driver=virtualbox 2>$null
-    Start-Service Multipass -ErrorAction SilentlyContinue
+
+    # Stop service completely
+    Write-Host "      Stopping Multipass service..." -ForegroundColor Gray
+    Stop-Service Multipass -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 3
+
+    # Start service
+    Write-Host "      Starting Multipass service..." -ForegroundColor Gray
+    Start-Service Multipass -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 10
+
+    # Set VirtualBox driver
+    Write-Host "      Setting VirtualBox driver..." -ForegroundColor Gray
+    & multipass set local.driver=virtualbox 2>$null
+    Start-Sleep -Seconds 3
+
+    # Restart service to apply
+    Write-Host "      Restarting service to apply changes..." -ForegroundColor Gray
+    Restart-Service Multipass -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 10
+
+    # Verify
+    $driver = & multipass get local.driver 2>$null
+    if ($driver -match "virtualbox") {
+        Write-Host "      VirtualBox driver configured!" -ForegroundColor Green
+    } else {
+        Write-Host "      Warning: Could not verify driver setting" -ForegroundColor Yellow
+    }
+
+    # Test connection
+    Write-Host "      Testing Multipass connection..." -ForegroundColor Gray
+    $testResult = & multipass list 2>&1
+    if ($testResult -match "No instances found" -or $testResult -match "Name") {
+        Write-Host "      Multipass connection OK!" -ForegroundColor Green
+    } else {
+        Write-Host "      Warning: Multipass may not be responding. Waiting more..." -ForegroundColor Yellow
+        Start-Sleep -Seconds 10
+    }
 }
 
 # Download cloud-init
