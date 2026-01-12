@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Fotios Claude CLI - Command line tool for managing projects and tickets
+CodeHero CLI - Command line tool for managing projects and tickets
 """
 
 import argparse
@@ -236,13 +236,13 @@ def show_status(args):
         cursor.close()
         conn.close()
         
-        print("\n=== Fotios Claude System Status ===\n")
+        print("\n=== CodeHero Status ===\n")
         print(f"Projects:        {projects}")
         print(f"Open tickets:    {ticket_stats.get('open', 0) + ticket_stats.get('new', 0)}")
         print(f"In progress:     {ticket_stats.get('in_progress', 0)}")
         print(f"Completed:       {ticket_stats.get('done', 0)}")
         
-        pid_file = "/var/run/fotios-claude/daemon.pid"
+        pid_file = "/var/run/codehero/daemon.pid"
         daemon_running = False
         if os.path.exists(pid_file):
             try:
@@ -262,7 +262,7 @@ def show_status(args):
 # ============ MAIN ============
 
 def main():
-    parser = argparse.ArgumentParser(description='Fotios Claude CLI')
+    parser = argparse.ArgumentParser(description='CodeHero CLI')
     subparsers = parser.add_subparsers(dest='command')
     
     # Project commands

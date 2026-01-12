@@ -35,15 +35,15 @@ except ImportError:
     SMART_CONTEXT_ENABLED = False
     print("[WARNING] SmartContextManager not available - using basic context")
 
-BACKUP_DIR = "/var/backups/fotios-claude"
+BACKUP_DIR = "/var/backups/codehero"
 MAX_BACKUPS = 30
 
 # Web app URL for broadcasting messages
 WEB_APP_URL = "http://127.0.0.1:5000"
 
 CONFIG_FILE = "/etc/codehero/system.conf"
-PID_FILE = "/var/run/fotios-claude/daemon.pid"
-LOG_FILE = "/var/log/fotios-claude/daemon.log"
+PID_FILE = "/var/run/codehero/daemon.pid"
+LOG_FILE = "/var/log/codehero/daemon.log"
 GLOBAL_CONTEXT_FILE = "/etc/codehero/global-context.md"
 STUCK_TIMEOUT_MINUTES = 30
 POLL_INTERVAL = 3
@@ -1561,7 +1561,7 @@ Answer briefly:"""
             msg = MIMEMultipart()
             msg['From'] = self.config.get('SMTP_USER', '')
             msg['To'] = self.config.get('ALERT_EMAIL', '')
-            msg['Subject'] = f"[Fotios Claude] {subject}"
+            msg['Subject'] = f"[CodeHero] {subject}"
             msg.attach(MIMEText(body, 'plain'))
             
             server = smtplib.SMTP(self.config.get('SMTP_HOST', 'smtp.gmail.com'),

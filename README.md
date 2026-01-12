@@ -75,7 +75,7 @@ Work from anywhere with **two-way Telegram integration**. No need to open a lapt
 
 ---
 
-## Why Fotios Claude System?
+## Why CodeHero?
 
 | Challenge | Solution |
 |-----------|----------|

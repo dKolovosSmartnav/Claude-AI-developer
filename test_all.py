@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive Playwright tests for Fotios Claude Admin Panel
+Comprehensive Playwright tests for CodeHero Admin Panel
 Tests all major functionality
 """
 
@@ -17,7 +17,7 @@ def test_all():
         page = context.new_page()
 
         print("\n" + "="*60)
-        print("FOTIOS CLAUDE ADMIN PANEL - COMPREHENSIVE TEST")
+        print("CODEHERO ADMIN PANEL - COMPREHENSIVE TEST")
         print("="*60)
 
         # ============ 1. LOGIN ============

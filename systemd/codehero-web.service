@@ -1,21 +1,16 @@
 [Unit]
-Description=Fotios Claude Web Interface
+Description=CodeHero Web Panel (Flask)
 After=network.target mysql.service
 
 [Service]
 Type=simple
-User=claude
-Group=claude
-WorkingDirectory=/opt/codehero
+User=root
+WorkingDirectory=/opt/codehero/web
+Environment=PYTHONUNBUFFERED=1
 ExecStart=/usr/bin/python3 /opt/codehero/web/app.py
 ExecStopPost=/bin/bash -c 'fuser -k 5000/tcp 2>/dev/null || true'
 Restart=always
 RestartSec=5
-StandardOutput=append:/var/log/fotios-claude/web.log
-StandardError=append:/var/log/fotios-claude/web.log
-
-# Environment
-Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=multi-user.target

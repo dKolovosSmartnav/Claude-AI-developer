@@ -37,24 +37,24 @@ sshpass -p 'PASSWORD' ssh -o StrictHostKeyChecking=no root@REMOTE_IP "cat /opt/c
 
 **Restart Remote Services:**
 ```bash
-sshpass -p 'PASSWORD' ssh -o StrictHostKeyChecking=no root@REMOTE_IP "systemctl restart fotios-claude-web fotios-claude-daemon"
+sshpass -p 'PASSWORD' ssh -o StrictHostKeyChecking=no root@REMOTE_IP "systemctl restart codehero-web codehero-daemon"
 ```
 
 ### Services
 
 ```bash
 # Check status
-systemctl status fotios-claude-web fotios-claude-daemon
+systemctl status codehero-web codehero-daemon
 
 # Restart after changes
-sudo systemctl restart fotios-claude-web    # Web interface
-sudo systemctl restart fotios-claude-daemon  # Background worker
+sudo systemctl restart codehero-web    # Web interface
+sudo systemctl restart codehero-daemon  # Background worker
 
 # View logs
-journalctl -u fotios-claude-web -f
-journalctl -u fotios-claude-daemon -f
-tail -f /var/log/fotios-claude/daemon.log
-tail -f /var/log/fotios-claude/web.log
+journalctl -u codehero-web -f
+journalctl -u codehero-daemon -f
+tail -f /var/log/codehero/daemon.log
+tail -f /var/log/codehero/web.log
 ```
 
 ### Database
@@ -111,13 +111,13 @@ sudo cp /home/claude/codehero/scripts/*.sh /opt/codehero/scripts/
 **IMPORTANT:** Always restart services after ANY change - otherwise changes won't be visible!
 
 ```bash
-sudo systemctl restart fotios-claude-web fotios-claude-daemon
+sudo systemctl restart codehero-web codehero-daemon
 ```
 
 ### 4. Verify
 
 ```bash
-systemctl status fotios-claude-web --no-pager | head -10
+systemctl status codehero-web --no-pager | head -10
 ```
 
 ---
@@ -285,13 +285,13 @@ cursor.close(); conn.close()
 
 ```bash
 # Check web logs
-tail -f /var/log/fotios-claude/web.log
+tail -f /var/log/codehero/web.log
 
 # Check daemon logs
-tail -f /var/log/fotios-claude/daemon.log
+tail -f /var/log/codehero/daemon.log
 
 # Check systemd logs
-journalctl -u fotios-claude-web -f
+journalctl -u codehero-web -f
 
 # Test database
 mysql -u claude_user -p claude_knowledge -e "SELECT * FROM tickets ORDER BY id DESC LIMIT 5"

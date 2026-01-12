@@ -246,7 +246,7 @@ while ($waited -lt $maxWait) {
     }
 
     # Check if services are running
-    $webRunning = & multipass exec claude-dev -- systemctl is-active fotios-claude-web 2>$null
+    $webRunning = & multipass exec claude-dev -- systemctl is-active codehero-web 2>$null
     if ($LASTEXITCODE -eq 0 -and $webRunning -match "active") {
         break
     }
@@ -362,8 +362,8 @@ if %ERRORLEVEL% NEQ 0 (
 
 REM Ensure services are running inside VM
 echo Checking services...
-multipass exec claude-dev -- sudo systemctl start fotios-claude-web 2>nul
-multipass exec claude-dev -- sudo systemctl start fotios-claude-daemon 2>nul
+multipass exec claude-dev -- sudo systemctl start codehero-web 2>nul
+multipass exec claude-dev -- sudo systemctl start codehero-daemon 2>nul
 
 REM Get IP address
 for /f "tokens=3 delims=," %%a in ('multipass list --format csv 2^>nul ^| findstr /C:"claude-dev"') do set IP=%%a

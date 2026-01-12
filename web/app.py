@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Fotios Claude Admin Panel v2
+CodeHero Admin Panel v2
 - Projects & Tickets management
 - Real-time chat with Claude
 - Background daemon control
@@ -74,7 +74,7 @@ def safe_filename(filename):
 
 CONFIG_FILE = "/etc/codehero/system.conf"
 DAEMON_SCRIPT = "/opt/codehero/scripts/claude-daemon.py"
-PID_FILE = "/var/run/fotios-claude/daemon.pid"
+PID_FILE = "/var/run/codehero/daemon.pid"
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -961,7 +961,7 @@ def rename_file_or_folder(project_id):
 
 # ============ BACKUP & RESTORE ============
 
-BACKUP_DIR = "/var/backups/fotios-claude"
+BACKUP_DIR = "/var/backups/codehero"
 MAX_BACKUPS = 30
 
 
@@ -2222,7 +2222,7 @@ def start_daemon():
             return jsonify({"success": False, "message": "Daemon already running"})
 
         subprocess.Popen(['python3', DAEMON_SCRIPT],
-                        stdout=open('/var/log/fotios-claude/daemon.log', 'a'),
+                        stdout=open('/var/log/codehero/daemon.log', 'a'),
                         stderr=subprocess.STDOUT, start_new_session=True)
         return jsonify({"success": True, "message": "Daemon started"})
     except Exception as e:
@@ -3470,13 +3470,13 @@ def save_settings():
 
         # Write back
         with open(config_file, 'w') as f:
-            f.write("# Fotios Claude System Configuration\n")
+            f.write("# CodeHero Configuration\n")
             for key, value in existing.items():
                 f.write(f"{key}={value}\n")
 
         # Restart daemon to load new settings
         try:
-            subprocess.run(['sudo', 'systemctl', 'restart', 'fotios-claude-daemon'],
+            subprocess.run(['sudo', 'systemctl', 'restart', 'codehero-daemon'],
                           timeout=10, capture_output=True)
         except:
             pass  # Non-critical, daemon will load on next restart
@@ -3500,7 +3500,7 @@ def test_telegram():
         url = f"https://api.telegram.org/bot{token}/sendMessage"
         payload = json.dumps({
             'chat_id': chat_id,
-            'text': '✅ <b>Fotios Claude System</b>\n\nTest notification successful!\nYou will receive alerts when tickets need attention.',
+            'text': '✅ <b>CodeHero</b>\n\nTest notification successful!\nYou will receive alerts when tickets need attention.',
             'parse_mode': 'HTML'
         }).encode('utf-8')
 
@@ -3591,7 +3591,7 @@ def check_update():
     try:
         req = urllib.request.Request(
             GITHUB_API_URL,
-            headers={'User-Agent': 'FotiosClaude/' + VERSION}
+            headers={'User-Agent': 'CodeHero/' + VERSION}
         )
         with urllib.request.urlopen(req, timeout=10) as response:
             data = json.loads(response.read().decode('utf-8'))
@@ -3639,7 +3639,7 @@ def do_update():
         # First check for update
         req = urllib.request.Request(
             GITHUB_API_URL,
-            headers={'User-Agent': 'FotiosClaude/' + VERSION}
+            headers={'User-Agent': 'CodeHero/' + VERSION}
         )
         with urllib.request.urlopen(req, timeout=10) as response:
             data = json.loads(response.read().decode('utf-8'))
@@ -3660,7 +3660,7 @@ def do_update():
         temp_dir = tempfile.mkdtemp()
         zip_path = os.path.join(temp_dir, zip_name)
 
-        req = urllib.request.Request(download_url, headers={'User-Agent': 'FotiosClaude/' + VERSION})
+        req = urllib.request.Request(download_url, headers={'User-Agent': 'CodeHero/' + VERSION})
         with urllib.request.urlopen(req, timeout=300) as response:
             with open(zip_path, 'wb') as f:
                 f.write(response.read())
@@ -3696,7 +3696,7 @@ def do_update():
         with open(wrapper_script, 'w') as f:
             f.write(f'''#!/bin/bash
 cd "{extracted_folder}"
-bash "{upgrade_script}" -y > /var/log/fotios-claude/upgrade.log 2>&1
+bash "{upgrade_script}" -y > /var/log/codehero/upgrade.log 2>&1
 rm -rf "{temp_dir}"
 ''')
         os.chmod(wrapper_script, 0o755)

@@ -36,7 +36,7 @@ CodeHero is a self-hosted autonomous AI coding platform powered by Claude AI to 
 | Templates | `/opt/codehero/web/templates/*.html` |
 | Config | `/etc/codehero/system.conf` |
 | SSL Certs | `/etc/codehero/ssl/` |
-| Logs | `/var/log/fotios-claude/` |
+| Logs | `/var/log/codehero/` |
 
 ### Important Configuration Files
 | File | Purpose |
@@ -52,8 +52,8 @@ CodeHero is a self-hosted autonomous AI coding platform powered by Claude AI to 
 ### Service Names (IMPORTANT!)
 ```bash
 # Correct service names
-fotios-claude-web      # Flask web interface
-fotios-claude-daemon   # Background ticket processor
+codehero-web      # Flask web interface
+codehero-daemon   # Background ticket processor
 mysql                  # Database
 lshttpd                # OpenLiteSpeed
 ```
@@ -61,16 +61,16 @@ lshttpd                # OpenLiteSpeed
 ### Commands
 ```bash
 # Check status
-systemctl status fotios-claude-web fotios-claude-daemon mysql lshttpd
+systemctl status codehero-web codehero-daemon mysql lshttpd
 
 # Restart after code changes
-sudo systemctl restart fotios-claude-web fotios-claude-daemon
+sudo systemctl restart codehero-web codehero-daemon
 
 # View logs
-journalctl -u fotios-claude-web -f
-journalctl -u fotios-claude-daemon -f
-tail -f /var/log/fotios-claude/daemon.log
-tail -f /var/log/fotios-claude/web.log
+journalctl -u codehero-web -f
+journalctl -u codehero-daemon -f
+tail -f /var/log/codehero/daemon.log
+tail -f /var/log/codehero/web.log
 ```
 
 ### Ports
@@ -266,12 +266,12 @@ audio = AudioSegment.from_mp3("input.mp3")
 
 3. **Restart services:**
    ```bash
-   sudo systemctl restart fotios-claude-web fotios-claude-daemon
+   sudo systemctl restart codehero-web codehero-daemon
    ```
 
 4. **Verify:**
    ```bash
-   systemctl status fotios-claude-web --no-pager | head -10
+   systemctl status codehero-web --no-pager | head -10
    ```
 
 ### Creating New Versions
@@ -297,29 +297,29 @@ audio = AudioSegment.from_mp3("input.mp3")
 ```bash
 echo "=== Health Check ===" && \
 systemctl is-active mysql > /dev/null && echo "MySQL: OK" || echo "MySQL: FAILED" && \
-systemctl is-active fotios-claude-web > /dev/null && echo "Web: OK" || echo "Web: FAILED" && \
-systemctl is-active fotios-claude-daemon > /dev/null && echo "Daemon: OK" || echo "Daemon: FAILED"
+systemctl is-active codehero-web > /dev/null && echo "Web: OK" || echo "Web: FAILED" && \
+systemctl is-active codehero-daemon > /dev/null && echo "Daemon: OK" || echo "Daemon: FAILED"
 ```
 
 ### Daemon Not Processing Tickets
 ```bash
 # 1. Check if running
-sudo systemctl status fotios-claude-daemon
+sudo systemctl status codehero-daemon
 
 # 2. Check logs
-journalctl -u fotios-claude-daemon -n 50
+journalctl -u codehero-daemon -n 50
 
 # 3. Check daemon_status table
 mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME -e "SELECT * FROM daemon_status"
 
 # 4. Restart
-sudo systemctl restart fotios-claude-daemon
+sudo systemctl restart codehero-daemon
 ```
 
 ### Web Panel Not Accessible
 ```bash
 # 1. Check Flask
-sudo systemctl status fotios-claude-web
+sudo systemctl status codehero-web
 
 # 2. Check if listening
 ss -tlnp | grep 5000
@@ -328,7 +328,7 @@ ss -tlnp | grep 5000
 sudo /usr/local/lsws/bin/lswsctrl status
 
 # 4. Restart
-sudo systemctl restart fotios-claude-web
+sudo systemctl restart codehero-web
 sudo systemctl restart lsws
 ```
 
@@ -365,7 +365,7 @@ netstat -tlnp | grep 5000
 cat /usr/local/lsws/conf/vhosts/vhost-admin.conf
 
 # Restart services
-sudo systemctl restart fotios-claude-web lsws
+sudo systemctl restart codehero-web lsws
 ```
 
 ---
@@ -458,7 +458,7 @@ cursor.close(); conn.close()
 
 ### Stop All Processing
 ```bash
-sudo systemctl stop fotios-claude-daemon
+sudo systemctl stop codehero-daemon
 ```
 
 ### Reset Everything

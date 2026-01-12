@@ -606,7 +606,7 @@ prlctl delete "claude-ai-developer"
 2. **Verify IP address**: Run `ifconfig` inside the VM
 3. **Check services**:
    ```bash
-   sudo systemctl status fotios-claude-web
+   sudo systemctl status codehero-web
    ```
 4. **Check firewall**:
    ```bash

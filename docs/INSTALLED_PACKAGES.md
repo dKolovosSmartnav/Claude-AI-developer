@@ -1,6 +1,6 @@
 # Installed Packages & Tools
 
-A complete list of packages and tools installed by the Fotios Claude System.
+A complete list of packages and tools installed by the CodeHero.
 
 ---
 

@@ -139,7 +139,7 @@ while [ $WAITED -lt $MAX_WAIT ]; do
     fi
 
     # Check if services are running
-    WEB_STATUS=$(multipass exec claude-dev -- systemctl is-active fotios-claude-web 2>/dev/null || echo "inactive")
+    WEB_STATUS=$(multipass exec claude-dev -- systemctl is-active codehero-web 2>/dev/null || echo "inactive")
     if [ "$WEB_STATUS" == "active" ]; then
         break
     fi

@@ -249,8 +249,8 @@ Get instant alerts on your phone when Claude needs attention.
 1. **Create a Telegram Bot**
    - Open Telegram on your phone and search for **@BotFather**
    - Send `/newbot`
-   - Enter a name for your bot (e.g., `Fotios Claude Alerts`)
-   - Enter a username for your bot (must end in `bot`, e.g., `fotios_claude_bot`)
+   - Enter a name for your bot (e.g., `CodeHero Alerts`)
+   - Enter a username for your bot (must end in `bot`, e.g., `codehero_bot`)
    - BotFather will give you the **token** - copy it (looks like `7123456789:AAHk5Jxxx...`)
 
 2. **Start a Chat with Your Bot**
@@ -353,8 +353,8 @@ If a ticket seems stuck:
 
 ### Claude Not Processing Tickets
 
-1. Check if daemon is running: `systemctl status fotios-claude-daemon`
-2. Review daemon logs: `journalctl -u fotios-claude-daemon -f`
+1. Check if daemon is running: `systemctl status codehero-daemon`
+2. Review daemon logs: `journalctl -u codehero-daemon -f`
 3. Verify MySQL is running: `systemctl status mysql`
 
 ### Permission Errors

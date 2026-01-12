@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================
-# FOTIOS CLAUDE SYSTEM - Change Passwords
+# CODEHERO - Change Passwords
 # =====================================================
 
 RED='\033[0;31m'
@@ -16,7 +16,7 @@ fi
 
 echo -e "${GREEN}"
 echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║       FOTIOS CLAUDE SYSTEM - Change Passwords             ║"
+echo "║       CODEHERO - Change Passwords             ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -83,8 +83,8 @@ change_mysql_app() {
         sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${NEW_PASS}/" /etc/codehero/system.conf
 
         # Restart services to use new password
-        systemctl restart fotios-claude-web 2>/dev/null || true
-        systemctl restart fotios-claude-daemon 2>/dev/null || true
+        systemctl restart codehero-web 2>/dev/null || true
+        systemctl restart codehero-daemon 2>/dev/null || true
 
         echo -e "${GREEN}MySQL app user password changed successfully${NC}"
         echo -e "${YELLOW}Services restarted to use new password${NC}"

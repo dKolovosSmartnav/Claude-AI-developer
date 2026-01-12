@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.53.0] - 2026-01-12
 
 ### Changed
-- **Admin Panel Rebrand** - All pages now show "CodeHero" instead of "Fotios Claude"
+- **Admin Panel Rebrand** - All pages now show "CodeHero" instead of "CodeHero"
   - Updated page titles across all templates
   - Updated navigation headers
   - Updated login page branding

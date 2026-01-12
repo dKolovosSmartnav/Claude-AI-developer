@@ -44,10 +44,10 @@ sshpass -p 'PASSWORD' scp -o StrictHostKeyChecking=no -r /home/claude/codehero/w
 **IMPORTANT:** Always restart services after ANY change - otherwise changes won't be visible!
 ```bash
 # Local
-sudo systemctl restart fotios-claude-web fotios-claude-daemon
+sudo systemctl restart codehero-web codehero-daemon
 
 # Remote (when available)
-sshpass -p 'PASSWORD' ssh -o StrictHostKeyChecking=no root@REMOTE_IP "systemctl restart fotios-claude-web fotios-claude-daemon"
+sshpass -p 'PASSWORD' ssh -o StrictHostKeyChecking=no root@REMOTE_IP "systemctl restart codehero-web codehero-daemon"
 ```
 
 ### 5. Update version numbers
@@ -84,8 +84,8 @@ gh release create vX.Y.Z /home/claude/codehero-X.Y.Z.zip --title "vX.Y.Z - Descr
 ## Service Names (IMPORTANT!)
 
 The correct names are:
-- `fotios-claude-web` (NOT fotios-web)
-- `fotios-claude-daemon` (NOT fotios-daemon)
+- `codehero-web` (NOT fotios-web)
+- `codehero-daemon` (NOT fotios-daemon)
 
 ## Check Sync (Local Source vs Local Prod vs Remote Prod)
 
@@ -103,10 +103,10 @@ sshpass -p 'PASSWORD' ssh -o StrictHostKeyChecking=no root@REMOTE_IP "cat /opt/c
 
 ```bash
 # Local
-systemctl status fotios-claude-web fotios-claude-daemon
+systemctl status codehero-web codehero-daemon
 
 # Remote (when available)
-sshpass -p 'PASSWORD' ssh -o StrictHostKeyChecking=no root@REMOTE_IP "systemctl is-active fotios-claude-web fotios-claude-daemon"
+sshpass -p 'PASSWORD' ssh -o StrictHostKeyChecking=no root@REMOTE_IP "systemctl is-active codehero-web codehero-daemon"
 ```
 
 ## Version History
@@ -129,7 +129,7 @@ The zip files are BACKUPS. Keep them all:
 
 Check that services are running:
 ```bash
-systemctl status fotios-claude-web fotios-claude-daemon mysql lshttpd
+systemctl status codehero-web codehero-daemon mysql lshttpd
 ```
 
 ## Detailed Development Notes

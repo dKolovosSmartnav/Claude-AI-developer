@@ -200,18 +200,18 @@ The services start automatically when you open WSL. If they're not running:
 
 **PowerShell:**
 ```powershell
-wsl -d Ubuntu-24.04 --exec systemctl start mysql lshttpd fotios-claude-web fotios-claude-daemon
+wsl -d Ubuntu-24.04 --exec systemctl start mysql lshttpd codehero-web codehero-daemon
 ```
 
 **Or inside WSL:**
 ```bash
-systemctl start mysql lshttpd fotios-claude-web fotios-claude-daemon
+systemctl start mysql lshttpd codehero-web codehero-daemon
 ```
 
 ### Check Services Status
 
 ```bash
-systemctl status fotios-claude-web fotios-claude-daemon
+systemctl status codehero-web codehero-daemon
 ```
 
 ### Get IP Address
@@ -313,7 +313,7 @@ wsl -d Ubuntu-24.04
 
 1. **Check services are running:**
    ```bash
-   systemctl status fotios-claude-web
+   systemctl status codehero-web
    ```
 
 2. **Check IP address:**
@@ -323,7 +323,7 @@ wsl -d Ubuntu-24.04
 
 3. **Start services if needed:**
    ```bash
-   systemctl start mysql lshttpd fotios-claude-web fotios-claude-daemon
+   systemctl start mysql lshttpd codehero-web codehero-daemon
    ```
 
 4. **Check firewall** (Windows may block):
@@ -377,8 +377,8 @@ wsl --install -d Ubuntu-24.04
 
 Check logs:
 ```bash
-journalctl -u fotios-claude-web -n 50
-journalctl -u fotios-claude-daemon -n 50
+journalctl -u codehero-web -n 50
+journalctl -u codehero-daemon -n 50
 ```
 
 ---
@@ -428,8 +428,8 @@ hostname -I
 | **Get IP address** | `wsl -d Ubuntu-24.04 --exec hostname -I` |
 | Open Ubuntu | `wsl -d Ubuntu-24.04` |
 | Shutdown WSL | `wsl --shutdown` |
-| Start services | `wsl -d Ubuntu-24.04 --exec systemctl start fotios-claude-web` |
-| Check services | `wsl -d Ubuntu-24.04 --exec systemctl status fotios-claude-web` |
+| Start services | `wsl -d Ubuntu-24.04 --exec systemctl start codehero-web` |
+| Check services | `wsl -d Ubuntu-24.04 --exec systemctl status codehero-web` |
 | List distros | `wsl --list --verbose` |
 | Remove distro | `wsl --unregister Ubuntu-24.04` |
 | Update WSL | `wsl --update` |

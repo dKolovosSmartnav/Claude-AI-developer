@@ -1,5 +1,5 @@
 [Unit]
-Description=Fotios Claude Daemon
+Description=CodeHero Daemon
 After=network.target mysql.service
 
 [Service]
@@ -10,8 +10,8 @@ WorkingDirectory=/opt/codehero
 ExecStart=/usr/bin/python3 /opt/codehero/scripts/claude-daemon.py
 Restart=always
 RestartSec=5
-StandardOutput=append:/var/log/fotios-claude/daemon.log
-StandardError=append:/var/log/fotios-claude/daemon.log
+StandardOutput=append:/var/log/codehero/daemon.log
+StandardError=append:/var/log/codehero/daemon.log
 
 # Environment
 Environment=PYTHONUNBUFFERED=1

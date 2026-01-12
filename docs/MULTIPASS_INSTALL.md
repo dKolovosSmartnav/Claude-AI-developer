@@ -471,12 +471,12 @@ sudo snap connect multipass:libvirt
 
 2. **Check services inside VM:**
    ```bash
-   multipass exec claude-dev -- systemctl status fotios-claude-web
+   multipass exec claude-dev -- systemctl status codehero-web
    ```
 
 3. **Start services if needed:**
    ```bash
-   multipass exec claude-dev -- sudo systemctl start mysql lshttpd fotios-claude-web fotios-claude-daemon
+   multipass exec claude-dev -- sudo systemctl start mysql lshttpd codehero-web codehero-daemon
    ```
 
 4. **Check IP:**
@@ -541,7 +541,7 @@ multipass exec claude-dev -- hostname -I
 | Run command | `multipass exec claude-dev -- <command>` |
 | VM info | `multipass info claude-dev` |
 | Delete VM | `multipass delete claude-dev --purge` |
-| View logs | `multipass exec claude-dev -- journalctl -u fotios-claude-web` |
+| View logs | `multipass exec claude-dev -- journalctl -u codehero-web` |
 
 ---
 

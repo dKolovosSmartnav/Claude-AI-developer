@@ -7,8 +7,8 @@ Get instant alerts on your phone when Claude needs your attention.
 1. Open **Telegram** on your phone
 2. Search for **@BotFather** and open it
 3. Send `/newbot`
-4. Enter a **name** for your bot (e.g., `Fotios Claude Alerts`)
-5. Enter a **username** for your bot (must end in `bot`, e.g., `fotios_claude_bot`)
+4. Enter a **name** for your bot (e.g., `CodeHero Alerts`)
+5. Enter a **username** for your bot (must end in `bot`, e.g., `codehero_bot`)
 6. BotFather will send you a message with your **token** - copy it
 
    ```

@@ -17,10 +17,10 @@ mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME
 ### Service Commands
 ```bash
 # Web Panel (Flask)
-sudo systemctl start|stop|restart|status fotios-claude-web
+sudo systemctl start|stop|restart|status codehero-web
 
 # Daemon (Ticket Processor)
-sudo systemctl start|stop|restart|status fotios-claude-daemon
+sudo systemctl start|stop|restart|status codehero-daemon
 
 # OpenLiteSpeed
 sudo systemctl restart lsws
@@ -35,12 +35,12 @@ sudo /usr/local/lsws/bin/lswsctrl status
 
 ### Quick Health Check (One Command)
 ```bash
-echo "=== FOTIOS CLAUDE SYSTEM - Health Check ===" && \
+echo "=== CODEHERO - Health Check ===" && \
 echo "" && \
 echo "Services:" && \
 systemctl is-active mysql > /dev/null 2>&1 && echo "  MySQL:           ✓ running" || echo "  MySQL:           ✗ NOT RUNNING" && \
-systemctl is-active fotios-claude-web > /dev/null 2>&1 && echo "  Flask Web:       ✓ running" || echo "  Flask Web:       ✗ NOT RUNNING" && \
-systemctl is-active fotios-claude-daemon > /dev/null 2>&1 && echo "  Daemon:          ✓ running" || echo "  Daemon:          ✗ NOT RUNNING" && \
+systemctl is-active codehero-web > /dev/null 2>&1 && echo "  Flask Web:       ✓ running" || echo "  Flask Web:       ✗ NOT RUNNING" && \
+systemctl is-active codehero-daemon > /dev/null 2>&1 && echo "  Daemon:          ✓ running" || echo "  Daemon:          ✗ NOT RUNNING" && \
 pgrep -f "litespeed" > /dev/null && echo "  OpenLiteSpeed:   ✓ running" || echo "  OpenLiteSpeed:   ✗ NOT RUNNING" && \
 echo "" && \
 echo "Ports:" && \
@@ -75,34 +75,34 @@ mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME -e "SELECT 1"
 sudo systemctl start mysql
 ```
 
-#### 2. Flask Web Panel (fotios-claude-web)
+#### 2. Flask Web Panel (codehero-web)
 ```bash
 # Check if running
-sudo systemctl status fotios-claude-web
+sudo systemctl status codehero-web
 
 # Check if port 5000 is listening
 ss -tlnp | grep :5000
 
 # Check logs for errors
-journalctl -u fotios-claude-web -n 20
+journalctl -u codehero-web -n 20
 
 # If not running:
-sudo systemctl start fotios-claude-web
+sudo systemctl start codehero-web
 ```
 
-#### 3. Claude Daemon (fotios-claude-daemon)
+#### 3. Claude Daemon (codehero-daemon)
 ```bash
 # Check if running
-sudo systemctl status fotios-claude-daemon
+sudo systemctl status codehero-daemon
 
 # Check daemon status in database
 mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME -e "SELECT * FROM daemon_status"
 
 # Check logs
-journalctl -u fotios-claude-daemon -n 20
+journalctl -u codehero-daemon -n 20
 
 # If not running:
-sudo systemctl start fotios-claude-daemon
+sudo systemctl start codehero-daemon
 ```
 
 #### 4. OpenLiteSpeed
@@ -134,9 +134,9 @@ curl -s -k https://localhost:9453/login | grep -o "<title>.*</title>"
 # Start all services in order
 sudo systemctl start mysql
 sleep 2
-sudo systemctl start fotios-claude-web
+sudo systemctl start codehero-web
 sleep 2
-sudo systemctl start fotios-claude-daemon
+sudo systemctl start codehero-daemon
 sudo /usr/local/lsws/bin/lswsctrl start
 ```
 
@@ -149,23 +149,23 @@ mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME -e "UPDATE daemon_status SET status='s
 mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME -e "UPDATE tickets SET status='open' WHERE status='in_progress'"
 
 # Restart daemon
-sudo systemctl restart fotios-claude-daemon
+sudo systemctl restart codehero-daemon
 ```
 
 #### Check if services are enabled for auto-start
 ```bash
 systemctl is-enabled mysql
-systemctl is-enabled fotios-claude-web
-systemctl is-enabled fotios-claude-daemon
+systemctl is-enabled codehero-web
+systemctl is-enabled codehero-daemon
 systemctl is-enabled lshttpd
 
 # Enable if not:
-sudo systemctl enable mysql fotios-claude-web fotios-claude-daemon lshttpd
+sudo systemctl enable mysql codehero-web codehero-daemon lshttpd
 ```
 
 ### Expected Output When Everything is OK
 ```
-=== FOTIOS CLAUDE SYSTEM - Health Check ===
+=== CODEHERO - Health Check ===
 
 Services:
   MySQL:           ✓ running
@@ -251,8 +251,8 @@ sudo nano /etc/codehero/global-context.md
 ### Services
 | Service | Port | Description |
 |---------|------|-------------|
-| fotios-claude-web | 5000 (internal) | Flask + SocketIO |
-| fotios-claude-daemon | - | Background ticket processor |
+| codehero-web | 5000 (internal) | Flask + SocketIO |
+| codehero-daemon | - | Background ticket processor |
 | lsws | 9453, 9867 | OpenLiteSpeed (SSL proxy) |
 
 ### Database Tables
@@ -424,26 +424,26 @@ grep MAX_PARALLEL /etc/codehero/system.conf
 
 # To change: edit config and restart daemon
 sudo nano /etc/codehero/system.conf
-sudo systemctl restart fotios-claude-daemon
+sudo systemctl restart codehero-daemon
 ```
 
 ### Daemon Control
 ```bash
 # Check status
-sudo systemctl status fotios-claude-daemon
+sudo systemctl status codehero-daemon
 ps aux | grep claude-daemon
 
 # View logs (live)
-journalctl -u fotios-claude-daemon -f
+journalctl -u codehero-daemon -f
 
 # View recent logs
-journalctl -u fotios-claude-daemon -n 100
+journalctl -u codehero-daemon -n 100
 
 # Restart daemon
-sudo systemctl restart fotios-claude-daemon
+sudo systemctl restart codehero-daemon
 
 # Stop daemon (tickets in progress will be marked stuck)
-sudo systemctl stop fotios-claude-daemon
+sudo systemctl stop codehero-daemon
 ```
 
 ### Check Active Workers
@@ -482,14 +482,14 @@ WHERE status='running' AND started_at < DATE_SUB(NOW(), INTERVAL 1 HOUR);
 ### Flask App
 ```bash
 # Check status
-sudo systemctl status fotios-claude-web
+sudo systemctl status codehero-web
 curl -k https://localhost:9453/login
 
 # Restart
-sudo systemctl restart fotios-claude-web
+sudo systemctl restart codehero-web
 
 # View logs
-journalctl -u fotios-claude-web -f
+journalctl -u codehero-web -f
 
 # Test Flask directly
 cd /opt/codehero/web && python3 app.py
@@ -561,10 +561,10 @@ UPDATE tickets SET status='failed', closed_at=NOW(), close_reason='failed' WHERE
 ### Daemon Not Processing Tickets
 ```bash
 # 1. Check if daemon is running
-sudo systemctl status fotios-claude-daemon
+sudo systemctl status codehero-daemon
 
 # 2. Check logs for errors
-journalctl -u fotios-claude-daemon -n 50
+journalctl -u codehero-daemon -n 50
 
 # 3. Check if there are open tickets
 mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME -e \
@@ -575,13 +575,13 @@ mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME -e \
   "SELECT * FROM daemon_status"
 
 # 5. Restart daemon
-sudo systemctl restart fotios-claude-daemon
+sudo systemctl restart codehero-daemon
 ```
 
 ### Web Panel Not Accessible
 ```bash
 # 1. Check Flask service
-sudo systemctl status fotios-claude-web
+sudo systemctl status codehero-web
 
 # 2. Check if Flask is listening
 netstat -tlnp | grep 5000
@@ -593,7 +593,7 @@ sudo /usr/local/lsws/bin/lswsctrl status
 cat /usr/local/lsws/conf/vhosts/vhost-admin.conf
 
 # 5. Restart services
-sudo systemctl restart fotios-claude-web
+sudo systemctl restart codehero-web
 sudo systemctl restart lsws
 ```
 
@@ -717,7 +717,7 @@ sudo cp -r /home/claude/codehero/web/templates/* /opt/codehero/web/templates/
 sudo cp /home/claude/codehero/scripts/claude-daemon.py /opt/codehero/scripts/
 
 # Restart services
-sudo systemctl restart fotios-claude-web fotios-claude-daemon
+sudo systemctl restart codehero-web codehero-daemon
 ```
 
 ---
@@ -726,7 +726,7 @@ sudo systemctl restart fotios-claude-web fotios-claude-daemon
 
 ### Stop All Processing
 ```bash
-sudo systemctl stop fotios-claude-daemon
+sudo systemctl stop codehero-daemon
 ```
 
 ### Reset Everything

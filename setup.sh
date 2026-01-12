@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================
-# FOTIOS CLAUDE SYSTEM - Installation Script
+# CODEHERO - Installation Script
 # Version is read from VERSION file
 # =====================================================
 # Usage:
@@ -30,7 +30,7 @@ fi
 
 echo -e "${GREEN}"
 echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║       FOTIOS CLAUDE SYSTEM - Installation                 ║"
+echo "║       CODEHERO - Installation                 ║"
 echo "║              Version ${VERSION}                              ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
@@ -76,7 +76,7 @@ PROJECTS_PORT="${PROJECTS_PORT:-9867}"
 OLS_WEBADMIN_PORT="${OLS_WEBADMIN_PORT:-7080}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/codehero}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/codehero}"
-LOG_DIR="${LOG_DIR:-/var/log/fotios-claude}"
+LOG_DIR="${LOG_DIR:-/var/log/codehero}"
 WEB_ROOT="${WEB_ROOT:-/var/www/projects}"
 APP_ROOT="${APP_ROOT:-/opt/apps}"
 MAX_PARALLEL_PROJECTS="${MAX_PARALLEL_PROJECTS:-3}"
@@ -328,7 +328,7 @@ else
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
         -keyout "${SSL_KEY}" \
         -out "${SSL_CERT}" \
-        -subj "/C=GR/ST=Athens/L=Athens/O=Fotios/CN=fotios-claude" 2>/dev/null || true
+        -subj "/C=GR/ST=Athens/L=Athens/O=CodeHero/CN=codehero" 2>/dev/null || true
     chmod 600 "${SSL_KEY}"
     chmod 644 "${SSL_CERT}"
     echo "SSL certificate generated"
@@ -345,13 +345,13 @@ mkdir -p ${APP_ROOT}
 mkdir -p ${INSTALL_DIR}/scripts
 mkdir -p ${INSTALL_DIR}/web/templates
 mkdir -p ${LOG_DIR}
-mkdir -p /var/run/fotios-claude
-mkdir -p /var/backups/fotios-claude
+mkdir -p /var/run/codehero
+mkdir -p /var/backups/codehero
 
-# Create tmpfiles.d config so /var/run/fotios-claude persists across reboots
-cat > /etc/tmpfiles.d/fotios-claude.conf << TMPEOF
-# Create runtime directory for Fotios Claude System
-d /var/run/fotios-claude 0755 ${CLAUDE_USER} ${CLAUDE_USER} -
+# Create tmpfiles.d config so /var/run/codehero persists across reboots
+cat > /etc/tmpfiles.d/codehero.conf << TMPEOF
+# Create runtime directory for CodeHero
+d /var/run/codehero 0755 ${CLAUDE_USER} ${CLAUDE_USER} -
 TMPEOF
 
 # Copy application files
@@ -388,8 +388,8 @@ chown -R ${CLAUDE_USER}:${CLAUDE_USER} ${LOG_DIR}
 # Pre-create log files with correct ownership (systemd creates as root otherwise)
 touch ${LOG_DIR}/daemon.log ${LOG_DIR}/web.log
 chown ${CLAUDE_USER}:${CLAUDE_USER} ${LOG_DIR}/daemon.log ${LOG_DIR}/web.log
-chown -R ${CLAUDE_USER}:${CLAUDE_USER} /var/run/fotios-claude
-chown -R ${CLAUDE_USER}:${CLAUDE_USER} /var/backups/fotios-claude
+chown -R ${CLAUDE_USER}:${CLAUDE_USER} /var/run/codehero
+chown -R ${CLAUDE_USER}:${CLAUDE_USER} /var/backups/codehero
 chown -R ${CLAUDE_USER}:${CLAUDE_USER} /home/${CLAUDE_USER}
 chmod 2775 ${WEB_ROOT}
 
@@ -398,7 +398,7 @@ cat > ${WEB_ROOT}/index.html << 'HTMLEOF'
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Fotios Claude - Projects</title>
+    <title>CodeHero - Projects</title>
     <style>
         body { font-family: -apple-system, sans-serif; background: #1a1a2e; color: #eee; padding: 40px; }
         h1 { color: #00d9ff; }
@@ -407,7 +407,7 @@ cat > ${WEB_ROOT}/index.html << 'HTMLEOF'
     </style>
 </head>
 <body>
-    <h1>Fotios Claude - Projects</h1>
+    <h1>CodeHero - Projects</h1>
     <div class="info">
         <p>Project URL: <code>https://server:${PROJECTS_PORT}/PROJECT_CODE/</code></p>
     </div>
@@ -452,7 +452,7 @@ echo -e "${YELLOW}[13/14] Creating configuration files...${NC}"
 # Main system config
 cat > ${CONFIG_DIR}/system.conf << CONFEOF
 # =====================================================
-# Fotios Claude System Configuration
+# CodeHero Configuration
 # Generated: $(date)
 # Version: ${VERSION}
 # =====================================================
@@ -499,7 +499,7 @@ chown ${CLAUDE_USER}:${CLAUDE_USER} ${CONFIG_DIR}/system.conf
 # Credentials file
 cat > ${CONFIG_DIR}/credentials.conf << CREDEOF
 # =====================================================
-# FOTIOS CLAUDE SYSTEM - All Credentials
+# CODEHERO - All Credentials
 # Generated: $(date)
 # =====================================================
 
@@ -548,9 +548,9 @@ chown root:root ${CONFIG_DIR}/credentials.conf
 echo -e "${YELLOW}[14/14] Setting up systemd services...${NC}"
 
 # Web Service
-cat > /etc/systemd/system/fotios-claude-web.service << SVCEOF
+cat > /etc/systemd/system/codehero-web.service << SVCEOF
 [Unit]
-Description=Fotios Claude Web Interface
+Description=CodeHero Web Interface
 After=network.target mysql.service
 Wants=mysql.service
 
@@ -572,10 +572,10 @@ WantedBy=multi-user.target
 SVCEOF
 
 # Daemon Service
-cat > /etc/systemd/system/fotios-claude-daemon.service << SVCEOF
+cat > /etc/systemd/system/codehero-daemon.service << SVCEOF
 [Unit]
-Description=Fotios Claude Daemon
-After=network.target mysql.service fotios-claude-web.service
+Description=CodeHero Daemon
+After=network.target mysql.service codehero-web.service
 Wants=mysql.service
 
 [Service]
@@ -601,8 +601,8 @@ systemctl daemon-reload
 # Enable auto-start on boot
 if [ "${ENABLE_AUTOSTART}" = "yes" ]; then
     systemctl enable mysql 2>/dev/null || true
-    systemctl enable fotios-claude-web 2>/dev/null || true
-    systemctl enable fotios-claude-daemon 2>/dev/null || true
+    systemctl enable codehero-web 2>/dev/null || true
+    systemctl enable codehero-daemon 2>/dev/null || true
     systemctl enable lshttpd 2>/dev/null || true
     echo -e "${GREEN}Auto-start enabled for all services${NC}"
 fi
@@ -613,13 +613,13 @@ fi
 echo -e "${CYAN}Starting services...${NC}"
 
 systemctl start mysql 2>/dev/null || true
-systemctl start fotios-claude-web 2>/dev/null || true
+systemctl start codehero-web 2>/dev/null || true
 /usr/local/lsws/bin/lswsctrl stop 2>/dev/null || true
 sleep 1
 /usr/local/lsws/bin/lswsctrl start 2>/dev/null || true
 
 # Start daemon
-systemctl start fotios-claude-daemon 2>/dev/null || true
+systemctl start codehero-daemon 2>/dev/null || true
 
 sleep 3
 

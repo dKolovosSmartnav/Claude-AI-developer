@@ -82,13 +82,13 @@ sudo /opt/codehero/scripts/change-passwords.sh
 ### Check services
 
 ```bash
-systemctl status fotios-claude-web fotios-claude-daemon mysql lshttpd
+systemctl status codehero-web codehero-daemon mysql lshttpd
 ```
 
 ### Restart services
 
 ```bash
-sudo systemctl restart fotios-claude-web fotios-claude-daemon
+sudo systemctl restart codehero-web codehero-daemon
 ```
 
 ## Upgrading
@@ -113,7 +113,7 @@ sudo ./upgrade.sh -y
 
 ### What the upgrade does
 
-1. **Backup**: Creates automatic backup in `/var/backups/fotios-claude/`
+1. **Backup**: Creates automatic backup in `/var/backups/codehero/`
 2. **Stop services**: Safely stops web and daemon services
 3. **Database migrations**: Applies any pending schema changes
 4. **Copy files**: Updates web, scripts, and docs
@@ -142,8 +142,8 @@ chmod +x uninstall.sh
 ### Services not starting
 
 ```bash
-journalctl -u fotios-claude-web -n 50
-journalctl -u fotios-claude-daemon -n 50
+journalctl -u codehero-web -n 50
+journalctl -u codehero-daemon -n 50
 ```
 
 ### Database connection issues

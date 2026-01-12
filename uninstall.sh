@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================
-# FOTIOS CLAUDE SYSTEM - Uninstall Script
+# CODEHERO - Uninstall Script
 # For testing purposes - removes everything
 # =====================================================
 
@@ -17,7 +17,7 @@ fi
 
 echo -e "${RED}"
 echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║       FOTIOS CLAUDE SYSTEM - UNINSTALL                    ║"
+echo "║       CODEHERO - UNINSTALL                    ║"
 echo "║                                                           ║"
 echo "║   WARNING: This will remove EVERYTHING!                   ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
@@ -47,10 +47,10 @@ read -p "Also remove claude user? (yes/no): " REMOVE_USER
 echo ""
 echo -e "${YELLOW}[1/8] Stopping services...${NC}"
 # Stop new service names
-systemctl stop fotios-claude-web 2>/dev/null || true
-systemctl stop fotios-claude-daemon 2>/dev/null || true
-systemctl disable fotios-claude-web 2>/dev/null || true
-systemctl disable fotios-claude-daemon 2>/dev/null || true
+systemctl stop codehero-web 2>/dev/null || true
+systemctl stop codehero-daemon 2>/dev/null || true
+systemctl disable codehero-web 2>/dev/null || true
+systemctl disable codehero-daemon 2>/dev/null || true
 # Stop old service names (for backwards compatibility)
 systemctl stop fotios-web 2>/dev/null || true
 systemctl stop fotios-daemon 2>/dev/null || true
@@ -98,11 +98,11 @@ echo -e "${YELLOW}[7/8] Removing application files...${NC}"
 rm -rf /opt/codehero 2>/dev/null || true
 rm -rf /opt/apps 2>/dev/null || true
 rm -rf /var/www/projects 2>/dev/null || true
-rm -rf /var/log/fotios-claude 2>/dev/null || true
-rm -rf /var/run/fotios-claude 2>/dev/null || true
+rm -rf /var/log/codehero 2>/dev/null || true
+rm -rf /var/run/codehero 2>/dev/null || true
 rm -rf /etc/codehero 2>/dev/null || true
-rm -f /etc/systemd/system/fotios-claude-web.service 2>/dev/null || true
-rm -f /etc/systemd/system/fotios-claude-daemon.service 2>/dev/null || true
+rm -f /etc/systemd/system/codehero-web.service 2>/dev/null || true
+rm -f /etc/systemd/system/codehero-daemon.service 2>/dev/null || true
 # Remove old service names (for backwards compatibility)
 rm -f /etc/systemd/system/fotios-web.service 2>/dev/null || true
 rm -f /etc/systemd/system/fotios-daemon.service 2>/dev/null || true

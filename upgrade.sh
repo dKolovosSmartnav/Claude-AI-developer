@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================
-# FOTIOS CLAUDE SYSTEM - Upgrade Script
+# CODEHERO - Upgrade Script
 # =====================================================
 # Usage:
 #   sudo ./upgrade.sh           # Interactive mode
@@ -21,7 +21,7 @@ NC='\033[0m'
 # Paths
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="/opt/codehero"
-BACKUP_DIR="/var/backups/fotios-claude"
+BACKUP_DIR="/var/backups/codehero"
 CONFIG_DIR="/etc/codehero"
 
 # Options
@@ -132,7 +132,7 @@ run_sql_file() {
 
 echo -e "${GREEN}"
 echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║         FOTIOS CLAUDE SYSTEM - Upgrade Script             ║"
+echo "║         CODEHERO - Upgrade Script             ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -149,7 +149,7 @@ fi
 
 # Check if installation exists
 if [ ! -d "$INSTALL_DIR" ]; then
-    log_error "Fotios Claude is not installed at $INSTALL_DIR"
+    log_error "CodeHero is not installed at $INSTALL_DIR"
     log_info "Please run setup.sh for fresh installation"
     exit 1
 fi
@@ -261,10 +261,10 @@ echo -e "${CYAN}=== Starting Upgrade ===${NC}"
 echo ""
 
 # Step 1: Create backup
-BACKUP_NAME="fotios-claude-${CURRENT_VERSION}-$(date +%Y%m%d_%H%M%S)"
+BACKUP_NAME="codehero-${CURRENT_VERSION}-$(date +%Y%m%d_%H%M%S)"
 log_info "Creating backup: ${BACKUP_DIR}/${BACKUP_NAME}.tar.gz"
 mkdir -p "$BACKUP_DIR"
-tar -czf "${BACKUP_DIR}/${BACKUP_NAME}.tar.gz" -C /opt fotios-claude 2>/dev/null
+tar -czf "${BACKUP_DIR}/${BACKUP_NAME}.tar.gz" -C /opt codehero 2>/dev/null
 log_success "Backup created"
 
 # Step 2: Install new packages (if any)
@@ -302,7 +302,7 @@ fi
 
 # Step 3: Stop daemon only (web stays running until end)
 log_info "Stopping daemon..."
-systemctl stop fotios-claude-daemon 2>/dev/null || true
+systemctl stop codehero-daemon 2>/dev/null || true
 sleep 1
 log_success "Daemon stopped"
 
@@ -319,8 +319,8 @@ if [ ${#PENDING_MIGRATIONS[@]} -gt 0 ]; then
             echo -e "${RED}FAILED${NC}"
             log_error "Migration failed: $migration_name"
             log_info "Rolling back: starting services..."
-            systemctl start fotios-claude-daemon 2>/dev/null || true
-            systemctl start fotios-claude-web 2>/dev/null || true
+            systemctl start codehero-daemon 2>/dev/null || true
+            systemctl start codehero-web 2>/dev/null || true
             exit 1
         fi
     done
@@ -371,14 +371,14 @@ log_success "Files copied"
 
 # Step 6: Fix log file permissions (in case they were created as root)
 log_info "Fixing log file permissions..."
-touch /var/log/fotios-claude/daemon.log /var/log/fotios-claude/web.log 2>/dev/null || true
-chown claude:claude /var/log/fotios-claude/daemon.log /var/log/fotios-claude/web.log 2>/dev/null || true
+touch /var/log/codehero/daemon.log /var/log/codehero/web.log 2>/dev/null || true
+chown claude:claude /var/log/codehero/daemon.log /var/log/codehero/web.log 2>/dev/null || true
 
 # Step 7: Restart services
 log_info "Restarting services..."
-systemctl restart fotios-claude-daemon
+systemctl restart codehero-daemon
 sleep 1
-systemctl restart fotios-claude-web
+systemctl restart codehero-web
 sleep 2
 log_success "Services restarted"
 
@@ -386,17 +386,17 @@ log_success "Services restarted"
 log_info "Verifying services..."
 VERIFY_OK=true
 
-if systemctl is-active --quiet fotios-claude-web; then
-    echo -e "  fotios-claude-web:    ${GREEN}running${NC}"
+if systemctl is-active --quiet codehero-web; then
+    echo -e "  codehero-web:    ${GREEN}running${NC}"
 else
-    echo -e "  fotios-claude-web:    ${RED}not running${NC}"
+    echo -e "  codehero-web:    ${RED}not running${NC}"
     VERIFY_OK=false
 fi
 
-if systemctl is-active --quiet fotios-claude-daemon; then
-    echo -e "  fotios-claude-daemon: ${GREEN}running${NC}"
+if systemctl is-active --quiet codehero-daemon; then
+    echo -e "  codehero-daemon: ${GREEN}running${NC}"
 else
-    echo -e "  fotios-claude-daemon: ${RED}not running${NC}"
+    echo -e "  codehero-daemon: ${RED}not running${NC}"
     VERIFY_OK=false
 fi
 

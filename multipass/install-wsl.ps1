@@ -117,7 +117,7 @@ $installScriptContent | Out-File -FilePath $tempScript -Encoding utf8 -NoNewline
 
 # Convert to Unix line endings and copy to WSL (use --exec to bypass OOBE)
 $wslPath = wsl -d Ubuntu-24.04 --exec /bin/bash -c "wslpath -u '$tempScript'"
-wsl -d Ubuntu-24.04 --exec /bin/bash -c "cat '$wslPath' | tr -d '\r' > /root/install-fotios.sh && chmod +x /root/install-fotios.sh && /root/install-fotios.sh"
+wsl -d Ubuntu-24.04 --exec /bin/bash -c "cat '$wslPath' | tr -d '\r' > /root/install-codehero.sh && chmod +x /root/install-codehero.sh && /root/install-codehero.sh"
 
 # Cleanup
 Remove-Item $tempScript -Force -ErrorAction SilentlyContinue
@@ -147,7 +147,7 @@ Write-Host ""
 Write-Host "  WSL COMMANDS:" -ForegroundColor Yellow
 Write-Host "  Open terminal:  wsl -d Ubuntu-24.04" -ForegroundColor White
 Write-Host "  Stop WSL:       wsl --shutdown" -ForegroundColor White
-Write-Host "  Start services: wsl -d Ubuntu-24.04 --exec systemctl start fotios-claude-web fotios-claude-daemon" -ForegroundColor White
+Write-Host "  Start services: wsl -d Ubuntu-24.04 --exec systemctl start codehero-web codehero-daemon" -ForegroundColor White
 Write-Host ""
 Write-Host "  CHANGE PASSWORDS:" -ForegroundColor Red
 Write-Host "  wsl -d Ubuntu-24.04 --exec /opt/codehero/scripts/change-passwords.sh" -ForegroundColor White
@@ -169,7 +169,7 @@ echo   Claude AI Developer (WSL)
 echo ========================================
 echo.
 echo Starting services...
-wsl -d Ubuntu-24.04 --exec /bin/bash -c "systemctl start mysql lshttpd fotios-claude-web fotios-claude-daemon" 2>nul
+wsl -d Ubuntu-24.04 --exec /bin/bash -c "systemctl start mysql lshttpd codehero-web codehero-daemon" 2>nul
 
 echo Getting IP address...
 for /f "tokens=1" %%a in ('wsl -d Ubuntu-24.04 --exec hostname -I 2^>nul') do set IP=%%a
