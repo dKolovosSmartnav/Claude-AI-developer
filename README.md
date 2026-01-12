@@ -209,7 +209,7 @@ Full Linux terminal in your browser:
 ```bash
 # Download, extract, and run
 cd /root
-unzip fotios-claude-system-2.41.0.zip
+unzip fotios-claude-system-2.45.0.zip
 cd fotios-claude-system
 chmod +x setup.sh && ./setup.sh
 
@@ -229,7 +229,7 @@ The installer automatically sets up:
 ```bash
 # Download new version
 cd /root
-unzip fotios-claude-system-2.41.0.zip
+unzip fotios-claude-system-2.45.0.zip
 cd fotios-claude-system
 
 # Preview changes (recommended)
