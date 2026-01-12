@@ -120,14 +120,21 @@ def poll_telegram_replies():
                     log_debug(f"Reply to message: {original_text[:50]}...")
                     ticket_number = extract_ticket_from_message(original_text)
                     log_debug(f"Extracted ticket: {ticket_number}")
-                    if ticket_number:
-                        replies.append({
-                            'ticket_number': ticket_number,
-                            'message': msg_text,
-                            'from': msg.get('from', {}).get('first_name', 'User')
-                        })
+                    replies.append({
+                        'ticket_number': ticket_number,  # May be None if not found
+                        'message': msg_text,
+                        'from': msg.get('from', {}).get('first_name', 'User'),
+                        'is_reply': True
+                    })
                 elif msg_text and not reply_to:
-                    log_debug(f"Not a reply - ignoring message")
+                    log_debug(f"Not a reply - sending help message")
+                    # Direct message - inform user to use reply
+                    replies.append({
+                        'ticket_number': None,
+                        'message': msg_text,
+                        'from': msg.get('from', {}).get('first_name', 'User'),
+                        'is_reply': False
+                    })
         return replies
     except Exception as e:
         log_debug(f"Telegram polling failed: {e}")
@@ -1381,6 +1388,17 @@ class ClaudeDaemon:
                 ticket_number = reply['ticket_number']
                 message = reply['message']
                 from_user = reply['from']
+                is_reply = reply.get('is_reply', True)
+
+                # Check if it's a direct message (not a reply)
+                if not is_reply:
+                    send_telegram("ℹ️ To interact with a ticket, please **reply** to a notification message.\n\n💡 Tip: Add ? at start or end to ask a question without reopening the ticket.")
+                    continue
+
+                # Check if ticket number was extracted
+                if not ticket_number:
+                    send_telegram("❌ Could not find ticket number in that message.\nPlease reply to a notification that contains a ticket number.")
+                    continue
 
                 # Find ticket by number
                 conn = self.get_db()
@@ -1426,6 +1444,7 @@ class ClaudeDaemon:
                     conn.commit()
                 else:
                     self.log(f"Telegram reply for unknown ticket: {ticket_number}", "WARNING")
+                    send_telegram(f"❌ Ticket {ticket_number} not found.\nIt may have been deleted or archived.")
 
                 cursor.close()
                 conn.close()
