@@ -201,13 +201,22 @@ Full Linux terminal in your browser:
 
 **No technical knowledge required!** Works on Windows, macOS, and Linux.
 
-| Platform | Download | Instructions |
-|----------|----------|--------------|
-| **Windows** | [install-windows.ps1](https://raw.githubusercontent.com/fotsakir/Claude-AI-developer/main/multipass/install-windows.ps1) | Right-click → Run with PowerShell |
-| **macOS** | [install-macos.command](https://raw.githubusercontent.com/fotsakir/Claude-AI-developer/main/multipass/install-macos.command) | Double-click to run |
-| **Linux** | `curl -sL https://raw.githubusercontent.com/fotsakir/Claude-AI-developer/main/multipass/install-linux.sh \| bash` | Run in terminal |
+**🪟 Windows** - Open PowerShell as Admin, paste:
+```powershell
+irm https://raw.githubusercontent.com/fotsakir/Claude-AI-developer/main/multipass/install-windows.ps1 | iex
+```
 
-Wait 15-20 minutes. Done! [Full guide →](docs/MULTIPASS_INSTALL.md)
+**🍎 macOS** - Open Terminal, paste:
+```bash
+curl -sL https://raw.githubusercontent.com/fotsakir/Claude-AI-developer/main/multipass/install-macos.command | bash
+```
+
+**🐧 Linux** - Open Terminal, paste:
+```bash
+curl -sL https://raw.githubusercontent.com/fotsakir/Claude-AI-developer/main/multipass/install-linux.sh | bash
+```
+
+Paste → Enter → Wait 15 minutes → Done! [Full guide →](docs/MULTIPASS_INSTALL.md)
 
 ---
 

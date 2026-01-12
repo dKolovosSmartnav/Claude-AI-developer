@@ -647,19 +647,45 @@
         <!-- One-Click Install Section -->
         <div style="margin-top: 2rem; padding: 1.5rem; background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(34, 211, 238, 0.15)); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.3);">
             <h3 style="margin: 0 0 1rem 0; color: #10b981; font-size: 1.3rem;">🚀 One-Click Install - No Technical Knowledge Required!</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                <a href="https://raw.githubusercontent.com/fotsakir/Claude-AI-developer/main/multipass/install-windows.ps1" class="btn" style="background: linear-gradient(135deg, #0078d4, #00a2ed); text-decoration: none; padding: 0.8rem 1rem;">
-                    🪟 Windows
-                </a>
-                <a href="https://raw.githubusercontent.com/fotsakir/Claude-AI-developer/main/multipass/install-macos.command" class="btn" style="background: linear-gradient(135deg, #555, #333); text-decoration: none; padding: 0.8rem 1rem;">
-                    🍎 macOS
-                </a>
-                <a href="https://raw.githubusercontent.com/fotsakir/Claude-AI-developer/main/multipass/install-linux.sh" class="btn" style="background: linear-gradient(135deg, #e95420, #772953); text-decoration: none; padding: 0.8rem 1rem;">
-                    🐧 Linux
-                </a>
+
+            <!-- Windows -->
+            <div style="margin-bottom: 1rem; text-align: left;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
+                    <span style="font-size: 1.2rem;">🪟</span>
+                    <strong style="color: #0078d4;">Windows</strong>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">- Open PowerShell as Admin, paste:</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.3); padding: 0.5rem 0.8rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; overflow-x: auto;">
+                    <code style="color: #22d3ee;">irm https://raw.githubusercontent.com/fotsakir/Claude-AI-developer/main/multipass/install-windows.ps1 | iex</code>
+                </div>
             </div>
-            <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">
-                Download → Run → Wait 15 minutes → Done!
+
+            <!-- macOS -->
+            <div style="margin-bottom: 1rem; text-align: left;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
+                    <span style="font-size: 1.2rem;">🍎</span>
+                    <strong style="color: #a3a3a3;">macOS</strong>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">- Open Terminal, paste:</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.3); padding: 0.5rem 0.8rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; overflow-x: auto;">
+                    <code style="color: #22d3ee;">curl -sL https://raw.githubusercontent.com/fotsakir/Claude-AI-developer/main/multipass/install-macos.command | bash</code>
+                </div>
+            </div>
+
+            <!-- Linux -->
+            <div style="margin-bottom: 1rem; text-align: left;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
+                    <span style="font-size: 1.2rem;">🐧</span>
+                    <strong style="color: #e95420;">Linux</strong>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">- Open Terminal, paste:</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.3); padding: 0.5rem 0.8rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; overflow-x: auto;">
+                    <code style="color: #22d3ee;">curl -sL https://raw.githubusercontent.com/fotsakir/Claude-AI-developer/main/multipass/install-linux.sh | bash</code>
+                </div>
+            </div>
+
+            <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary); text-align: center;">
+                Paste → Enter → Wait 15 minutes → Done!
                 <a href="https://github.com/fotsakir/Claude-AI-developer/blob/main/docs/MULTIPASS_INSTALL.md" style="color: #10b981;">Full guide →</a>
             </p>
         </div>
