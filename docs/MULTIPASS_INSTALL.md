@@ -117,29 +117,42 @@ claude
 
 ---
 
-## VM Management
+## Daily Usage
+
+After installation, the VM runs in the background. Use these commands to manage it:
 
 ### Start/Stop the VM
 
 ```bash
-# Stop VM (saves resources)
+# Start VM (after reboot or when stopped)
+multipass start claude-dev
+
+# Stop VM (saves resources when not using)
 multipass stop claude-dev
 
-# Start VM
-multipass start claude-dev
+# Check VM status
+multipass list
 ```
 
-### Delete the VM
+### Access the Dashboard
+
+1. Make sure VM is running: `multipass start claude-dev`
+2. Get the IP: `multipass exec claude-dev -- hostname -I`
+3. Open browser: `https://YOUR_IP:9453`
+
+### Access VM Terminal
+
+```bash
+multipass shell claude-dev
+```
+
+### Delete the VM (Uninstall)
 
 ```bash
 multipass delete claude-dev --purge
 ```
 
-### List all VMs
-
-```bash
-multipass list
-```
+> **Tip:** The VM starts automatically when your computer boots. Use `multipass stop claude-dev` to stop it when not needed.
 
 ---
 

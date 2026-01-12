@@ -197,6 +197,11 @@ Write-Host ""
 Write-Host "  CHANGE PASSWORDS (via Web Terminal or SSH):" -ForegroundColor Red
 Write-Host "  sudo /opt/fotios-claude/scripts/change-passwords.sh" -ForegroundColor White
 Write-Host ""
+Write-Host "  DAILY USAGE:" -ForegroundColor Yellow
+Write-Host "  Start VM:   multipass start claude-dev" -ForegroundColor White
+Write-Host "  Stop VM:    multipass stop claude-dev" -ForegroundColor White
+Write-Host "  VM Status:  multipass list" -ForegroundColor White
+Write-Host ""
 Write-Host "==========================================" -ForegroundColor Green
 Write-Host ""
 
