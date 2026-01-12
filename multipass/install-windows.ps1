@@ -69,9 +69,22 @@ if ($needsVirtualBox) {
 # Check if Multipass is installed
 Write-Host "[3/6] Checking for Multipass..." -ForegroundColor Yellow
 $multipass = Get-Command multipass -ErrorAction SilentlyContinue
+$freshInstall = $false
 
 if (-not $multipass) {
     Write-Host "      Multipass not found. Installing..." -ForegroundColor Yellow
+    $freshInstall = $true
+
+    # If we need VirtualBox, create config BEFORE installing Multipass
+    if ($needsVirtualBox) {
+        Write-Host "      Pre-configuring VirtualBox driver..." -ForegroundColor Gray
+        $configDir = "C:\ProgramData\Multipass\data\multipassd"
+        New-Item -ItemType Directory -Path $configDir -Force -ErrorAction SilentlyContinue | Out-Null
+        @"
+[General]
+driver=virtualbox
+"@ | Out-File -FilePath "$configDir\multipassd.conf" -Encoding utf8 -Force
+    }
 
     # Check if winget is available
     $winget = Get-Command winget -ErrorAction SilentlyContinue
@@ -92,6 +105,13 @@ if (-not $multipass) {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
     Write-Host "      Multipass installed!" -ForegroundColor Green
+
+    # Stop service immediately after install (before it tries to use wrong driver)
+    Write-Host "      Stopping service to apply configuration..." -ForegroundColor Gray
+    Start-Sleep -Seconds 3
+    Stop-Service Multipass -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+
 } else {
     Write-Host "      Multipass is already installed." -ForegroundColor Green
 }
@@ -103,7 +123,7 @@ if ($needsVirtualBox) {
     # Stop service completely
     Write-Host "      Stopping Multipass service..." -ForegroundColor Gray
     Stop-Service Multipass -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds 3
 
     # Write driver setting directly to config file (bypasses socket issue)
     Write-Host "      Writing VirtualBox driver to config..." -ForegroundColor Gray
@@ -166,17 +186,23 @@ Write-Host "      Done." -ForegroundColor Green
 
 # Check if VM already exists
 Write-Host "[5/6] Checking for existing VM..." -ForegroundColor Yellow
-$existingVm = multipass list --format csv | Select-String "claude-dev"
+$ErrorActionPreference = "SilentlyContinue"
+$existingVm = & multipass list --format csv 2>&1 | Select-String "claude-dev"
+$ErrorActionPreference = "Stop"
+
 if ($existingVm) {
     Write-Host "      VM 'claude-dev' already exists!" -ForegroundColor Yellow
     $response = Read-Host "      Delete and recreate? (y/n)"
     if ($response -eq 'y') {
         Write-Host "      Deleting existing VM..." -ForegroundColor Gray
-        multipass delete claude-dev --purge
+        & multipass delete claude-dev --purge 2>$null
+        Start-Sleep -Seconds 3
     } else {
         Write-Host "      Keeping existing VM. Exiting." -ForegroundColor Yellow
         exit 0
     }
+} else {
+    Write-Host "      No existing VM found." -ForegroundColor Green
 }
 
 # Create VM
