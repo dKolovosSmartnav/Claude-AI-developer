@@ -5,6 +5,27 @@ All notable changes to the Fotios Claude System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.48.0] - 2026-01-12
+
+### Added
+- **Desktop Shortcuts**: Installers create convenient desktop shortcuts
+  - Windows: `.url` shortcut + `Start Claude VM.bat` batch file
+  - macOS: `.webloc` bookmark + `Start Claude VM.command` script
+  - Linux: `.desktop` file + `start-claude-vm.sh` script
+- **Windows Home Support**: Full VirtualBox backend for Windows Home edition
+  - Auto-detects Windows Home (no Hyper-V)
+  - Auto-installs VirtualBox via winget
+  - Pre-configures VirtualBox driver before Multipass installation
+  - Connection retry logic (5 attempts with 10-second waits)
+
+### Fixed
+- **Windows Installer**: Fixed "cannot connect to multipass socket" error
+  - Root cause: Multipass started with Hyper-V driver on Windows Home
+  - Fix: Write VirtualBox driver to config BEFORE installing Multipass
+  - Added service stop/start sequence for proper driver application
+- **Timeout Issues**: Increased VM launch timeout to 1800 seconds (30 min)
+- **VirtualBox Initialization**: Added 30-second wait for VirtualBox initialization
+
 ## [2.47.0] - 2026-01-12
 
 ### Added
