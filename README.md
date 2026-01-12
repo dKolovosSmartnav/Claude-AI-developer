@@ -460,7 +460,7 @@ See [CLAUDE.md](CLAUDE.md) for development guidelines.
 
 ## License
 
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+This project uses a **Dual License** - free for personal use and small businesses, commercial license required for larger organizations. See [LICENSE](LICENSE) for details.
 
 ---
 
