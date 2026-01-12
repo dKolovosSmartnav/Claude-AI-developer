@@ -253,31 +253,32 @@ $ip = ""
 # Method 1: hostname -I
 try {
     $ipOutput = & multipass exec claude-dev -- hostname -I 2>$null
-    if ($ipOutput) {
-        $ip = ($ipOutput -split '\s+')[0]
+    if ($ipOutput -and $ipOutput.Trim()) {
+        $ip = ($ipOutput.Trim() -split '\s+')[0]
     }
 } catch {}
 
-# Method 2: multipass info
+# Method 2: multipass info (parse IPv4 line)
 if (-not $ip) {
     try {
         $infoOutput = & multipass info claude-dev 2>$null
-        $ipLine = $infoOutput | Select-String "IPv4"
-        if ($ipLine) {
-            $ip = ($ipLine -split '\s+')[-1]
+        foreach ($line in $infoOutput) {
+            if ($line -match "IPv4:\s*(\d+\.\d+\.\d+\.\d+)") {
+                $ip = $matches[1]
+                break
+            }
         }
     } catch {}
 }
 
-# Method 3: multipass list
+# Method 3: multipass list --format csv
 if (-not $ip) {
     try {
         $listOutput = & multipass list --format csv 2>$null
-        $claudeLine = $listOutput | Select-String "claude-dev"
-        if ($claudeLine) {
-            $parts = $claudeLine -split ','
-            if ($parts.Count -ge 3) {
-                $ip = $parts[2].Trim()
+        foreach ($line in $listOutput) {
+            if ($line -match "^claude-dev,\w+,(\d+\.\d+\.\d+\.\d+)") {
+                $ip = $matches[1]
+                break
             }
         }
     } catch {}
