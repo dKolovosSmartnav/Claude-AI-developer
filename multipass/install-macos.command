@@ -101,15 +101,14 @@ echo ""
 echo "      Live installation progress:"
 echo "      ─────────────────────────────"
 
-# Show live progress in background, check for completion
-(
-    sleep 10  # Wait for cloud-init to start
-    multipass exec claude-dev -- tail -f /var/log/cloud-init-output.log 2>/dev/null | while read line; do
-        echo "      $line"
-    done
-) &
+# Wait a bit for cloud-init to start
+sleep 5
+
+# Show live progress - run tail with unbuffered output
+multipass exec claude-dev -- tail -f /var/log/cloud-init-output.log 2>/dev/null &
 TAIL_PID=$!
 
+# Check for completion in background
 MAX_WAIT=1200  # 20 minutes
 WAITED=0
 INTERVAL=10
@@ -133,6 +132,7 @@ done
 
 # Stop the tail process
 kill $TAIL_PID 2>/dev/null
+wait $TAIL_PID 2>/dev/null
 echo ""
 echo "      ─────────────────────────────"
 echo "      Installation complete!"
