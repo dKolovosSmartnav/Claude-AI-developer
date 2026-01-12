@@ -58,33 +58,32 @@ if (-not $ubuntuInstalled) {
 # Initialize Ubuntu with root as default user (skip user creation prompt)
 Write-Host "[3/4] Initializing Ubuntu..." -ForegroundColor Yellow
 
-# Create wsl.conf to set root as default user
-Write-Host "      Configuring default user..." -ForegroundColor Gray
-$wslConf = @"
-[user]
-default=root
-"@
-$wslConfPath = "$env:TEMP\wsl.conf"
-$wslConf | Out-File -FilePath $wslConfPath -Encoding ascii -NoNewline
+# Use --exec to bypass the interactive OOBE (first-run user creation)
+# This runs the command directly without starting an interactive shell
+Write-Host "      Configuring root as default user..." -ForegroundColor Gray
 
-# Copy wsl.conf to Ubuntu (need to do initial launch first)
-wsl -d Ubuntu-24.04 -u root -- bash -c "echo 'Initializing...'" 2>$null
+# First, try to configure wsl.conf using --exec (bypasses OOBE)
+$configResult = wsl -d Ubuntu-24.04 --exec /bin/bash -c "echo -e '[user]\ndefault=root' > /etc/wsl.conf" 2>&1
 if ($LASTEXITCODE -ne 0) {
-    # First launch - need to set up via import or direct config
-    Write-Host "      First time setup..." -ForegroundColor Gray
-    # Use powershell to write directly to the WSL filesystem
-    $wslEtcPath = "\\wsl$\Ubuntu-24.04\etc\wsl.conf"
-    $wslConf | Out-File -FilePath $wslEtcPath -Encoding ascii -NoNewline -ErrorAction SilentlyContinue
-    # Terminate and restart to apply
-    wsl --terminate Ubuntu-24.04 2>$null
-    Start-Sleep -Seconds 2
+    Write-Host "      Note: First-time initialization..." -ForegroundColor Gray
 }
 
-# Now run as root
-wsl -d Ubuntu-24.04 -u root -- echo "Ubuntu ready" 2>$null
-Write-Host "      Ubuntu ready!" -ForegroundColor Green
+# Terminate to apply the wsl.conf settings
+wsl --terminate Ubuntu-24.04 2>$null
+Start-Sleep -Seconds 3
 
-Remove-Item $wslConfPath -Force -ErrorAction SilentlyContinue
+# Now it should work with root as default
+Write-Host "      Testing connection..." -ForegroundColor Gray
+$testResult = wsl -d Ubuntu-24.04 --exec /bin/bash -c "whoami" 2>&1
+if ($testResult -match "root") {
+    Write-Host "      Ubuntu ready! (running as root)" -ForegroundColor Green
+} else {
+    # Fallback: try with -u root
+    wsl -d Ubuntu-24.04 -u root --exec /bin/bash -c "echo -e '[user]\ndefault=root' > /etc/wsl.conf" 2>$null
+    wsl --terminate Ubuntu-24.04 2>$null
+    Start-Sleep -Seconds 2
+    Write-Host "      Ubuntu ready!" -ForegroundColor Green
+}
 
 # Run the installation inside WSL
 Write-Host "[4/4] Installing Fotios Claude System inside WSL..." -ForegroundColor Yellow
@@ -115,9 +114,9 @@ echo "done" > /root/install-complete
 $tempScript = "$env:TEMP\wsl-install.sh"
 $installScriptContent | Out-File -FilePath $tempScript -Encoding utf8 -NoNewline
 
-# Convert to Unix line endings and copy to WSL
-$wslPath = wsl -d Ubuntu-24.04 -- wslpath -u "$tempScript"
-wsl -d Ubuntu-24.04 -u root -- bash -c "cat '$wslPath' | tr -d '\r' > /root/install-fotios.sh && chmod +x /root/install-fotios.sh && /root/install-fotios.sh"
+# Convert to Unix line endings and copy to WSL (use --exec to bypass OOBE)
+$wslPath = wsl -d Ubuntu-24.04 --exec /bin/bash -c "wslpath -u '$tempScript'"
+wsl -d Ubuntu-24.04 --exec /bin/bash -c "cat '$wslPath' | tr -d '\r' > /root/install-fotios.sh && chmod +x /root/install-fotios.sh && /root/install-fotios.sh"
 
 # Cleanup
 Remove-Item $tempScript -Force -ErrorAction SilentlyContinue
@@ -125,7 +124,7 @@ Remove-Item $tempScript -Force -ErrorAction SilentlyContinue
 # Get IP address
 Write-Host ""
 Write-Host "      Getting IP address..." -ForegroundColor Gray
-$ip = wsl -d Ubuntu-24.04 -- hostname -I 2>$null | ForEach-Object { $_.Split()[0] }
+$ip = wsl -d Ubuntu-24.04 --exec hostname -I 2>$null | ForEach-Object { $_.Split()[0] }
 
 if (-not $ip) {
     $ip = "[Run: wsl hostname -I]"
@@ -147,10 +146,10 @@ Write-Host ""
 Write-Host "  WSL COMMANDS:" -ForegroundColor Yellow
 Write-Host "  Open terminal:  wsl -d Ubuntu-24.04" -ForegroundColor White
 Write-Host "  Stop WSL:       wsl --shutdown" -ForegroundColor White
-Write-Host "  Start services: wsl -d Ubuntu-24.04 -u root -- systemctl start fotios-claude-web fotios-claude-daemon" -ForegroundColor White
+Write-Host "  Start services: wsl -d Ubuntu-24.04 --exec systemctl start fotios-claude-web fotios-claude-daemon" -ForegroundColor White
 Write-Host ""
 Write-Host "  CHANGE PASSWORDS:" -ForegroundColor Red
-Write-Host "  wsl -d Ubuntu-24.04 -u root -- /opt/fotios-claude/scripts/change-passwords.sh" -ForegroundColor White
+Write-Host "  wsl -d Ubuntu-24.04 --exec /opt/fotios-claude/scripts/change-passwords.sh" -ForegroundColor White
 Write-Host ""
 Write-Host "==========================================" -ForegroundColor Green
 Write-Host ""
@@ -169,10 +168,10 @@ echo   Claude AI Developer (WSL)
 echo ========================================
 echo.
 echo Starting services...
-wsl -d Ubuntu-24.04 -u root -- systemctl start mysql lshttpd fotios-claude-web fotios-claude-daemon 2>nul
+wsl -d Ubuntu-24.04 --exec /bin/bash -c "systemctl start mysql lshttpd fotios-claude-web fotios-claude-daemon" 2>nul
 
 echo Getting IP address...
-for /f "tokens=1" %%a in ('wsl -d Ubuntu-24.04 -- hostname -I 2^>nul') do set IP=%%a
+for /f "tokens=1" %%a in ('wsl -d Ubuntu-24.04 --exec hostname -I 2^>nul') do set IP=%%a
 
 if "%IP%"=="" (
     echo ERROR: Could not get IP address
