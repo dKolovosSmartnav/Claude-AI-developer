@@ -5,6 +5,17 @@ All notable changes to the Fotios Claude System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.46.0] - 2026-01-12
+
+### Fixed
+- **Ticket regex**: Support project codes with numbers (e.g., TEST30-0001)
+  - Changed from `[A-Z]+-\d+` to `[A-Z]+\d*-\d+`
+- **Telegram question handler**: Handle None content in conversation messages
+- **Log file permissions**: Pre-create log files with correct ownership
+  - setup.sh: Creates daemon.log and web.log before services start
+  - upgrade.sh: Fixes permissions during upgrade
+  - Prevents systemd from creating files as root
+
 ## [2.45.0] - 2026-01-12
 
 ### Added
