@@ -5,6 +5,19 @@ All notable changes to the Fotios Claude System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.49.0] - 2026-01-12
+
+### Added
+- **WSL2 Installer for Windows**: One-click PowerShell script for Windows users
+  - `install-wsl.ps1` - Installs WSL2, Ubuntu 24.04, and runs setup automatically
+  - Ideal for Windows users who prefer WSL2 over Multipass VM
+  - Creates desktop shortcut to dashboard
+- **Website Improvements**:
+  - Added Enterprise Services section with consulting/support contact
+  - Added Live Preview to features section
+  - Reorganized installation sections (Manual, WSL2, Multipass)
+  - Updated SEO meta tags and Open Graph descriptions
+
 ## [2.48.1] - 2026-01-12
 
 ### Fixed

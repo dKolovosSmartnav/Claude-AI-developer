@@ -647,28 +647,19 @@
         <!-- Manual Install Section (Recommended) -->
         <details open style="margin-top: 2rem; text-align: left; max-width: 750px; margin-left: auto; margin-right: auto; background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15)); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.3); padding: 1.5rem;">
             <summary style="cursor: pointer; color: #6366f1; font-size: 1.2rem; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 0.5rem;">
-                <span style="font-size: 1.3rem;">📦</span> Manual Install (Recommended)
+                <span style="font-size: 1.3rem;">📦</span> Manual Install on VM
                 <span style="margin-left: auto; font-size: 0.75rem; background: #6366f1; color: white; padding: 2px 8px; border-radius: 4px;">RECOMMENDED</span>
             </summary>
             <p style="margin: 1rem 0 0.5rem 0; font-size: 0.9rem; color: var(--text-secondary);">
-                <strong style="color: #f59e0b;">We recommend installing on a Virtual Machine (VM)</strong> - VirtualBox, VMware, Hyper-V, or a cloud VPS. This keeps your system clean and makes it easy to start fresh.
+                Install on a fresh <strong>Ubuntu 22.04/24.04</strong> VM (VirtualBox, VMware, Hyper-V, or cloud VPS).
+                <a href="https://github.com/fotsakir/Claude-AI-developer/blob/main/INSTALL.md" style="color: #22d3ee;">Full installation guide →</a>
             </p>
             <div class="code-block" style="margin-top: 0.8rem;">
-                <span class="comment"># On Ubuntu 22.04/24.04 Server (fresh VM recommended)</span><br><br>
-                <span class="comment"># Install required tools</span><br>
-                <span class="command">apt-get update && apt-get install -y unzip wget net-tools</span><br><br>
-                <span class="comment"># Download and extract</span><br>
-                <span class="command">cd /root</span><br>
+                <span class="comment"># On Ubuntu VM (as root)</span><br>
+                <span class="command">apt-get update && apt-get install -y unzip wget</span><br>
                 <span class="command">wget https://github.com/fotsakir/Claude-AI-developer/releases/latest/download/fotios-claude-system-2.48.1.zip</span><br>
-                <span class="command">unzip fotios-claude-system-*.zip && cd fotios-claude-system</span><br><br>
-                <span class="comment"># Run setup (takes ~10 minutes)</span><br>
-                <span class="command">./setup.sh</span><br><br>
-                <span class="comment"># Get your VM's IP address</span><br>
-                <span class="command">ifconfig</span>
+                <span class="command">unzip fotios-claude-system-*.zip && cd fotios-claude-system && ./setup.sh</span>
             </div>
-            <p style="margin: 0.8rem 0 0 0; font-size: 0.85rem; color: var(--text-muted); text-align: center;">
-                Then open <strong>https://YOUR_IP:9453</strong> in your browser
-            </p>
         </details>
 
         <!-- WSL2 Install Section (Windows) -->
@@ -678,40 +669,31 @@
                 <span style="margin-left: auto; font-size: 0.75rem; background: #0078d4; color: white; padding: 2px 8px; border-radius: 4px;">WINDOWS</span>
             </summary>
             <p style="margin: 1rem 0 0.5rem 0; font-size: 0.9rem; color: var(--text-secondary);">
-                Run natively on Windows using <strong>WSL2</strong> (Windows Subsystem for Linux). Built into Windows 10/11 - no extra software needed.
+                Run natively on Windows 10/11 using <strong>WSL2</strong>. Built-in, no extra software needed.
             </p>
-            <div class="code-block" style="margin-top: 0.8rem;">
-                <span class="comment"># Step 1: Install WSL2 with Ubuntu (PowerShell as Admin)</span><br>
-                <span class="command">wsl --install -d Ubuntu-24.04</span><br><br>
-                <span class="comment"># Step 2: Restart Windows, then open Ubuntu from Start Menu</span><br><br>
-                <span class="comment"># Step 3: Inside Ubuntu terminal, run:</span><br>
-                <span class="command">sudo su</span><br>
-                <span class="command">apt-get update && apt-get install -y unzip wget net-tools</span><br>
-                <span class="command">cd /root</span><br>
-                <span class="command">wget https://github.com/fotsakir/Claude-AI-developer/releases/latest/download/fotios-claude-system-2.48.1.zip</span><br>
-                <span class="command">unzip fotios-claude-system-*.zip && cd fotios-claude-system</span><br>
-                <span class="command">./setup.sh</span><br><br>
-                <span class="comment"># Step 4: Get IP address</span><br>
-                <span class="command">hostname -I</span>
+            <div style="background: rgba(0,0,0,0.3); padding: 0.6rem 1rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; overflow-x: auto; margin-top: 0.5rem;">
+                <code style="color: #22d3ee;">irm https://raw.githubusercontent.com/fotsakir/Claude-AI-developer/main/multipass/install-wsl.ps1 | iex</code>
             </div>
-            <p style="margin: 0.8rem 0 0 0; font-size: 0.85rem; color: var(--text-muted); text-align: center;">
-                Open <strong>https://YOUR_IP:9453</strong> in your Windows browser
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">
+                Run in <strong>PowerShell as Administrator</strong>. May require restart for WSL2 installation.
             </p>
         </details>
 
         <!-- One-Click Install Section (Experimental) -->
         <details style="margin-top: 1.5rem; text-align: left; max-width: 750px; margin-left: auto; margin-right: auto; background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(251, 191, 36, 0.1)); border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.3); padding: 1.5rem;">
-            <summary style="cursor: pointer; color: #f59e0b; font-size: 1.2rem; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 0.5rem;">
-                <span style="font-size: 1.3rem;">🚀</span> One-Click Install (Multipass)
-                <span style="margin-left: auto; font-size: 0.75rem; background: #f59e0b; color: black; padding: 2px 8px; border-radius: 4px;">EXPERIMENTAL</span>
+            <summary style="cursor: pointer; color: #f59e0b; font-size: 1.2rem; font-weight: 600; list-style: none; display: flex; flex-direction: column; gap: 0.3rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 0.9rem; transition: transform 0.2s;">▶</span>
+                    <span>One-Click Install (Multipass)</span>
+                    <span style="margin-left: auto; font-size: 0.75rem; background: #f59e0b; color: black; padding: 2px 8px; border-radius: 4px;">EXPERIMENTAL</span>
+                </div>
+                <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 400; margin-left: 1.5rem;">
+                    Automatically creates a VM using Multipass. Works on Windows, macOS, and Linux. Behavior may vary.
+                </span>
             </summary>
-            <p style="margin: 1rem 0 0.5rem 0; font-size: 0.85rem; color: var(--text-secondary);">
-                Automatically creates a VM using <a href="https://multipass.run" style="color: #22d3ee;">Multipass</a>. Works on Windows, macOS, and Linux.
-                <strong style="color: #f59e0b;">Experimental</strong> - behavior may vary depending on your system configuration.
-            </p>
 
             <!-- Windows -->
-            <div style="margin-bottom: 0.8rem;">
+            <div style="margin: 1rem 0 0.8rem 0;">
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
                     <span style="font-size: 1.1rem;">🪟</span>
                     <strong style="color: #0078d4; font-size: 0.9rem;">Windows</strong>
