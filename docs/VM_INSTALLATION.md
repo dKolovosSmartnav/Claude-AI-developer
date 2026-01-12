@@ -339,10 +339,10 @@ sudo su
 cd /root
 
 # Download the latest release
-wget https://github.com/fotsakir/Claude-AI-developer/releases/latest/download/fotios-claude-system-2.46.0.zip
+wget https://github.com/fotsakir/Claude-AI-developer/releases/latest/download/fotios-claude-system-2.46.1.zip
 
 # Extract
-unzip fotios-claude-system-2.46.0.zip
+unzip fotios-claude-system-2.46.1.zip
 
 # Enter the folder
 cd fotios-claude-system
