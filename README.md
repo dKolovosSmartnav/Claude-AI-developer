@@ -177,7 +177,10 @@ Full Linux terminal in your browser:
 - **Tech Stack Detection** - Knows installed tools (Node.js, PHP, Java, etc.)
 
 ### Monitoring & Analytics
-- **Usage Analytics** - Track token usage and execution time
+- **Real-Time Usage Tracking** - Tokens, API requests, and work duration tracked in real-time
+- **Per-Project Stats** - See exactly how much each project costs
+- **Per-Ticket Stats** - Know the cost of every feature or fix
+- **Time-Based Reports** - Daily, weekly, and monthly usage summaries
 - **Session History** - View all Claude sessions with full output
 - **Daemon Status** - Monitor background worker status
 
