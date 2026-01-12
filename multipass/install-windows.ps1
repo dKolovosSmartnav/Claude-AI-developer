@@ -247,40 +247,41 @@ while ($waited -lt $maxWait) {
     Write-Host "      Still installing... ($minutes minutes elapsed)" -ForegroundColor Gray
 }
 
-# Get IP address (try multiple methods)
+# Get IP address (try multiple methods with timeout)
 $ip = ""
+Write-Host "      Getting VM IP address..." -ForegroundColor Gray
 
-# Method 1: hostname -I
+# Method 1: multipass list (fastest, most reliable)
 try {
-    $ipOutput = & multipass exec claude-dev -- hostname -I 2>$null
-    if ($ipOutput -and $ipOutput.Trim()) {
-        $ip = ($ipOutput.Trim() -split '\s+')[0]
-    }
-} catch {}
-
-# Method 2: multipass info (parse IPv4 line)
-if (-not $ip) {
-    try {
-        $infoOutput = & multipass info claude-dev 2>$null
-        foreach ($line in $infoOutput) {
-            if ($line -match "IPv4:\s*(\d+\.\d+\.\d+\.\d+)") {
-                $ip = $matches[1]
-                break
-            }
-        }
-    } catch {}
-}
-
-# Method 3: multipass list --format csv
-if (-not $ip) {
-    try {
-        $listOutput = & multipass list --format csv 2>$null
+    $job = Start-Job -ScriptBlock { multipass list --format csv 2>$null }
+    $completed = Wait-Job $job -Timeout 15
+    if ($completed) {
+        $listOutput = Receive-Job $job
         foreach ($line in $listOutput) {
             if ($line -match "^claude-dev,\w+,(\d+\.\d+\.\d+\.\d+)") {
                 $ip = $matches[1]
                 break
             }
         }
+    }
+    Remove-Job $job -Force -ErrorAction SilentlyContinue
+} catch {}
+
+# Method 2: multipass info
+if (-not $ip) {
+    try {
+        $job = Start-Job -ScriptBlock { multipass info claude-dev 2>$null }
+        $completed = Wait-Job $job -Timeout 15
+        if ($completed) {
+            $infoOutput = Receive-Job $job
+            foreach ($line in $infoOutput) {
+                if ($line -match "IPv4:\s*(\d+\.\d+\.\d+\.\d+)") {
+                    $ip = $matches[1]
+                    break
+                }
+            }
+        }
+        Remove-Job $job -Force -ErrorAction SilentlyContinue
     } catch {}
 }
 
