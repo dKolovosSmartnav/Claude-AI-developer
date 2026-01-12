@@ -1487,7 +1487,8 @@ class ClaudeDaemon:
             context += "Recent conversation:\n"
             for msg in messages[-5:]:  # Last 5 messages
                 role = "User" if msg['role'] == 'user' else "Claude"
-                content = msg['content'][:300] + "..." if len(msg['content']) > 300 else msg['content']
+                msg_content = msg['content'] or "[no content]"
+                content = msg_content[:300] + "..." if len(msg_content) > 300 else msg_content
                 context += f"\n{role}: {content}\n"
 
             # Call Haiku for summary
