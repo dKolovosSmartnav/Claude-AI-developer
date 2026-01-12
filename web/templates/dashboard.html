@@ -396,6 +396,69 @@
             border-color: var(--accent-primary);
         }
 
+        /* Settings Form */
+        .claude-btn-settings {
+            padding: 8px 12px;
+            font-size: 16px;
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .claude-btn-settings:hover {
+            background: var(--bg-card);
+            border-color: var(--accent-primary);
+        }
+        .settings-form .form-group {
+            margin-bottom: 16px;
+        }
+        .settings-form label {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+        .settings-form input[type="text"] {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+        }
+        .settings-form input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        .checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-primary);
+            cursor: pointer;
+        }
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            justify-content: flex-end;
+        }
+
         /* Container */
         .container {
             max-width: 1400px;
@@ -1019,6 +1082,9 @@
             <a href="/claude-assistant" class="claude-btn claude-btn-assistant">
                 Claude Assistant
             </a>
+            <button class="claude-btn claude-btn-settings" onclick="openSettingsModal()" title="Settings">
+                ⚙️
+            </button>
             <a href="/logout" class="nav-link">Logout</a>
         </div>
     </div>
@@ -1064,6 +1130,77 @@
                 </div>
 
                 <div id="activationStatus" style="margin-top: 16px; padding: 12px; border-radius: 8px; display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>⚙️ Settings</h2>
+                <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h3 style="color: var(--accent-cyan); margin-bottom: 16px; font-size: 16px;">
+                        📱 Telegram Notifications
+                    </h3>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">
+                        Get notified when tickets need attention.
+                        <a href="https://t.me/BotFather" target="_blank" style="color: var(--accent-primary);">Create a bot</a> first.
+                    </p>
+
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label>Bot Token</label>
+                            <input type="text" id="telegramBotToken" placeholder="7123456789:AAHxxxxx...">
+                        </div>
+                        <div class="form-group">
+                            <label>Chat ID</label>
+                            <input type="text" id="telegramChatId" placeholder="123456789">
+                            <small style="color: var(--text-muted); font-size: 11px;">
+                                Send /start to your bot + one more message, then check
+                                <code style="background: var(--bg-secondary); padding: 2px 6px; border-radius: 4px;">
+                                    api.telegram.org/bot&lt;TOKEN&gt;/getUpdates
+                                </code>
+                            </small>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label style="margin-bottom: 12px; display: block;">Notify me when:</label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="notifyCompleted" checked>
+                                    <span>✅ Ticket completed</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="notifyAwaiting" checked>
+                                    <span>⏳ Awaiting input</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="notifyFailed" checked>
+                                    <span>❌ Ticket failed</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="notifyWatchdog" checked>
+                                    <span>⚠️ Watchdog alert</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="activation-btn activation-btn-secondary" onclick="testTelegram()">
+                                Test Notification
+                            </button>
+                            <button class="activation-btn activation-btn-primary" onclick="saveSettings()">
+                                Save Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="settingsStatus" style="margin-top: 16px; padding: 12px; border-radius: 8px; display: none;"></div>
             </div>
         </div>
     </div>
@@ -1711,6 +1848,98 @@
         // Close modal on overlay click
         document.getElementById('activationModal').addEventListener('click', function(e) {
             if (e.target === this) closeActivationModal();
+        });
+
+        // Settings Modal Functions
+        function openSettingsModal() {
+            document.getElementById('settingsModal').classList.add('show');
+            loadSettings();
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('show');
+        }
+
+        async function loadSettings() {
+            try {
+                const resp = await fetch('/api/settings');
+                const data = await resp.json();
+                if (data.success) {
+                    document.getElementById('telegramBotToken').value = data.settings.telegram_bot_token || '';
+                    document.getElementById('telegramChatId').value = data.settings.telegram_chat_id || '';
+                    document.getElementById('notifyCompleted').checked = data.settings.notify_completed !== false;
+                    document.getElementById('notifyAwaiting').checked = data.settings.notify_awaiting !== false;
+                    document.getElementById('notifyFailed').checked = data.settings.notify_failed !== false;
+                    document.getElementById('notifyWatchdog').checked = data.settings.notify_watchdog !== false;
+                }
+            } catch (e) {
+                console.error('Failed to load settings:', e);
+            }
+        }
+
+        async function saveSettings() {
+            const settings = {
+                telegram_bot_token: document.getElementById('telegramBotToken').value.trim(),
+                telegram_chat_id: document.getElementById('telegramChatId').value.trim(),
+                notify_completed: document.getElementById('notifyCompleted').checked,
+                notify_awaiting: document.getElementById('notifyAwaiting').checked,
+                notify_failed: document.getElementById('notifyFailed').checked,
+                notify_watchdog: document.getElementById('notifyWatchdog').checked
+            };
+            try {
+                const resp = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    showSettingsStatus('success', 'Settings saved! Daemon restarted.');
+                } else {
+                    showSettingsStatus('error', data.error || 'Failed to save');
+                }
+            } catch (e) {
+                showSettingsStatus('error', 'Network error');
+            }
+        }
+
+        async function testTelegram() {
+            const token = document.getElementById('telegramBotToken').value.trim();
+            const chatId = document.getElementById('telegramChatId').value.trim();
+            if (!token || !chatId) {
+                showSettingsStatus('error', 'Enter bot token and chat ID first');
+                return;
+            }
+            try {
+                const resp = await fetch('/api/settings/test-telegram', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, chat_id: chatId })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    showSettingsStatus('success', 'Test notification sent!');
+                } else {
+                    showSettingsStatus('error', data.error || 'Failed to send');
+                }
+            } catch (e) {
+                showSettingsStatus('error', 'Network error');
+            }
+        }
+
+        function showSettingsStatus(type, message) {
+            const status = document.getElementById('settingsStatus');
+            status.style.display = 'block';
+            status.style.background = type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+            status.style.border = '1px solid ' + (type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)');
+            status.style.color = type === 'success' ? 'var(--accent-green)' : 'var(--accent-red)';
+            status.textContent = message;
+            setTimeout(() => { status.style.display = 'none'; }, 5000);
+        }
+
+        // Close settings modal on overlay click
+        document.getElementById('settingsModal').addEventListener('click', function(e) {
+            if (e.target === this) closeSettingsModal();
         });
     </script>
 </body>

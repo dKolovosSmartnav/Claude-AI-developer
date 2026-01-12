@@ -49,6 +49,56 @@ STUCK_TIMEOUT_MINUTES = 30
 POLL_INTERVAL = 3
 MAX_PARALLEL_PROJECTS = 3
 
+# Telegram notification settings (loaded from config)
+TELEGRAM_BOT_TOKEN = ""
+TELEGRAM_CHAT_ID = ""
+NOTIFY_SETTINGS = {
+    'ticket_completed': True,
+    'awaiting_input': True,
+    'ticket_failed': True,
+    'watchdog_alert': True
+}
+
+def send_telegram(message, parse_mode="HTML"):
+    """Send notification via Telegram bot"""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return False
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        data = json.dumps({
+            'chat_id': TELEGRAM_CHAT_ID,
+            'text': message,
+            'parse_mode': parse_mode
+        }).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+        urllib.request.urlopen(req, timeout=10)
+        return True
+    except Exception as e:
+        print(f"[WARNING] Telegram notification failed: {e}")
+        return False
+
+def notify(event_type, title, message, project_name=None, ticket_number=None):
+    """Send notification based on event type and settings"""
+    if not NOTIFY_SETTINGS.get(event_type, False):
+        return
+
+    icons = {
+        'ticket_completed': '✅',
+        'awaiting_input': '⏳',
+        'ticket_failed': '❌',
+        'watchdog_alert': '⚠️'
+    }
+    icon = icons.get(event_type, '📢')
+
+    text = f"{icon} <b>{title}</b>\n"
+    if project_name:
+        text += f"📁 Project: {project_name}\n"
+    if ticket_number:
+        text += f"🎫 Ticket: {ticket_number}\n"
+    text += f"\n{message}"
+
+    send_telegram(text)
+
 class ProjectWorker(threading.Thread):
     """Worker thread for a specific project"""
 
@@ -237,7 +287,16 @@ class ProjectWorker(threading.Thread):
     def update_ticket(self, ticket_id, status, result=None):
         try:
             conn = self.get_db()
-            cursor = conn.cursor()
+            cursor = conn.cursor(dictionary=True)
+
+            # Get ticket info for notification
+            cursor.execute("""
+                SELECT t.ticket_number, t.title, p.name as project_name
+                FROM tickets t JOIN projects p ON t.project_id = p.id
+                WHERE t.id = %s
+            """, (ticket_id,))
+            ticket_info = cursor.fetchone()
+
             actual_status = status
             if status == 'done':
                 # Set to awaiting_input instead of done - user must respond or close
@@ -258,6 +317,20 @@ class ProjectWorker(threading.Thread):
 
             # Broadcast status change to web UI
             self.broadcast_status(ticket_id, actual_status)
+
+            # Send Telegram notification (protected)
+            try:
+                if ticket_info:
+                    if actual_status == 'awaiting_input':
+                        notify('awaiting_input', 'Task Completed - Awaiting Review',
+                               ticket_info.get('title', ''),
+                               ticket_info.get('project_name'), ticket_info.get('ticket_number'))
+                    elif actual_status == 'failed':
+                        notify('ticket_failed', 'Task Failed',
+                               result or ticket_info.get('title', ''),
+                               ticket_info.get('project_name'), ticket_info.get('ticket_number'))
+            except:
+                pass  # Notification failure should not affect ticket processing
         except Exception as e:
             self.log(f"Error updating ticket: {e}", "ERROR")
 
@@ -1095,6 +1168,11 @@ Your response:"""
                 f"Please review and provide guidance to continue."
             )
 
+            # Send Telegram notification
+            notify('watchdog_alert', 'Ticket Stuck - Watchdog Alert',
+                   f"{reason}\n\nThe AI appears stuck and needs intervention.",
+                   ticket.get('project_name'), ticket.get('ticket_number'))
+
             # Broadcast to web UI
             try:
                 data = json.dumps({
@@ -1128,6 +1206,17 @@ class ClaudeDaemon:
         self.workers = {}
         self.workers_lock = threading.Lock()
         self.max_parallel = int(self.config.get('MAX_PARALLEL_PROJECTS', MAX_PARALLEL_PROJECTS))
+
+        # Load Telegram notification settings
+        global TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, NOTIFY_SETTINGS
+        TELEGRAM_BOT_TOKEN = self.config.get('TELEGRAM_BOT_TOKEN', '')
+        TELEGRAM_CHAT_ID = self.config.get('TELEGRAM_CHAT_ID', '')
+        NOTIFY_SETTINGS['ticket_completed'] = self.config.get('NOTIFY_TICKET_COMPLETED', 'yes').lower() == 'yes'
+        NOTIFY_SETTINGS['awaiting_input'] = self.config.get('NOTIFY_AWAITING_INPUT', 'yes').lower() == 'yes'
+        NOTIFY_SETTINGS['ticket_failed'] = self.config.get('NOTIFY_TICKET_FAILED', 'yes').lower() == 'yes'
+        NOTIFY_SETTINGS['watchdog_alert'] = self.config.get('NOTIFY_WATCHDOG_ALERT', 'yes').lower() == 'yes'
+        if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+            print(f"[INFO] Telegram notifications enabled")
         self.global_context = self.load_global_context()
 
         # Initialize Smart Context Manager

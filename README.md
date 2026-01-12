@@ -84,7 +84,7 @@ Built-in protection against runaway AI sessions:
 - **Monitors all active tickets** every 30 minutes
 - **Detects stuck patterns**: repeated errors, circular behavior, no progress
 - **Auto-pauses problematic tickets** before excessive token usage
-- **Email notifications** when issues detected
+- **Telegram notifications** when issues detected
 - **Explains why** it stopped in the conversation
 
 #### AI Project Manager (Blueprint Planner)
@@ -108,6 +108,14 @@ Claude can see exactly what you see:
 - **Visual analysis** - Describes layout, styling, and UI issues
 - **No more explaining** - Just click "👁️ See" and Claude sees the problem
 - **Automatic when needed** - Mention visual issues and Claude uses Playwright automatically
+
+#### Telegram Notifications - Stay Informed Anywhere
+Get instant alerts on your phone when Claude needs attention:
+- **Awaiting Input** - Notified when Claude completes a task and waits for your review
+- **Task Failed** - Immediate alert if something goes wrong
+- **Watchdog Alerts** - Know when a ticket gets stuck
+- **Easy Setup** - Configure directly from the Settings panel (⚙️)
+- **Test Before Save** - Send test notification to verify your setup
 
 ### Core AI Features
 - **Autonomous AI Agent** - Claude AI works on tickets independently, writing real code
@@ -347,6 +355,7 @@ REVIEW_DEADLINE_DAYS=7
 | Document | Description |
 |----------|-------------|
 | [User Guide](docs/USER_GUIDE.md) | How to use the admin panel (with screenshots) |
+| [Telegram Setup](docs/TELEGRAM_SETUP.md) | Get instant alerts on your phone |
 | [VM Installation](docs/VM_INSTALLATION.md) | Install on VMware, Hyper-V, VirtualBox, UTM, Parallels |
 | [Installed Packages](docs/INSTALLED_PACKAGES.md) | All tools & packages (ffmpeg, ImageMagick, OCR, etc.) |
 | [INSTALL.md](INSTALL.md) | Detailed installation guide |

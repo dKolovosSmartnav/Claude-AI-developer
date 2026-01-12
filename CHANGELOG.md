@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.42.0] - 2026-01-12
 
 ### Added
+- **Telegram Notifications**: Get instant alerts on your phone
+  - Notified when Claude needs input (awaiting_input)
+  - Notified when tasks fail
+  - Notified on Watchdog alerts
+  - Settings panel (⚙️) in dashboard for easy configuration
+  - Test notification button before saving
+  - Auto-restart daemon when settings saved
 - **Multimedia Tools**: Full suite of image, audio, video, and PDF processing tools
   - ffmpeg, ImageMagick, tesseract-ocr (English + Greek), sox, poppler-utils
   - Python: Pillow, OpenCV, pytesseract, pdf2image, pydub

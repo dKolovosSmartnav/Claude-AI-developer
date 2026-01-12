@@ -13,6 +13,9 @@ This guide will walk you through using the Claude-AI-developer Admin Panel to ma
 7. [Web Terminal](#web-terminal)
 8. [Claude Assistant](#claude-assistant)
 9. [AI Project Manager](#ai-project-manager)
+10. [Settings](#settings)
+11. [Tips & Best Practices](#tips--best-practices)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -230,6 +233,53 @@ After the conversation, Claude provides a complete blueprint including:
 ### Tip
 
 Copy the generated blueprint into your project's description field when creating a new project. This gives Claude all the context it needs when working on tickets.
+
+---
+
+## Settings
+
+Access settings by clicking the **⚙️** button in the dashboard header.
+
+### Telegram Notifications
+
+Get instant alerts on your phone when Claude needs attention.
+
+#### Setup Instructions
+
+1. **Create a Telegram Bot**
+   - Open Telegram on your phone and search for **@BotFather**
+   - Send `/newbot`
+   - Enter a name for your bot (e.g., `Fotios Claude Alerts`)
+   - Enter a username for your bot (must end in `bot`, e.g., `fotios_claude_bot`)
+   - BotFather will give you the **token** - copy it (looks like `7123456789:AAHk5Jxxx...`)
+
+2. **Start a Chat with Your Bot**
+   - Click the link BotFather gave you, or search for your bot's username
+   - Press **Start** or send `/start`
+   - **Important:** Send one more message (e.g., "hello") - this is needed for the next step
+
+3. **Get Your Chat ID**
+   - Open this URL in your browser (replace `<TOKEN>` with your actual token):
+     ```
+     https://api.telegram.org/bot<TOKEN>/getUpdates
+     ```
+   - Look for `"chat":{"id":123456789}` - the number is your **Chat ID**
+
+4. **Configure in Settings**
+   - Go to Dashboard and click ⚙️ (Settings)
+   - Paste your **Bot Token**
+   - Paste your **Chat ID**
+   - Select which notifications you want to receive
+   - Click **Test Notification** to verify it works
+   - If you receive the test message, click **Save Settings**
+
+#### Available Notifications
+
+| Event | Description |
+|-------|-------------|
+| ⏳ Awaiting Input | Claude completed a task and needs your review |
+| ❌ Task Failed | Something went wrong during execution |
+| ⚠️ Watchdog Alert | A ticket appears to be stuck |
 
 ---
 

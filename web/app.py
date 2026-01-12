@@ -39,6 +39,8 @@ import zipfile
 import tempfile
 import shutil
 import uuid
+import urllib.request
+import urllib.error
 from datetime import datetime
 from functools import wraps
 import sys
@@ -3403,6 +3405,115 @@ def claude_save_apikey():
             os.chown(env_file, pw.pw_uid, pw.pw_gid)
         except: pass
         return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# Settings API
+@app.route('/api/settings', methods=['GET'])
+@login_required
+def get_settings():
+    """Get current settings from system.conf"""
+    try:
+        config_file = '/etc/fotios-claude/system.conf'
+        settings = {}
+        if os.path.exists(config_file):
+            with open(config_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, value = line.split('=', 1)
+                        settings[key.strip()] = value.strip()
+        return jsonify({
+            'success': True,
+            'settings': {
+                'telegram_bot_token': settings.get('TELEGRAM_BOT_TOKEN', ''),
+                'telegram_chat_id': settings.get('TELEGRAM_CHAT_ID', ''),
+                'notify_completed': settings.get('NOTIFY_TICKET_COMPLETED', 'yes').lower() == 'yes',
+                'notify_awaiting': settings.get('NOTIFY_AWAITING_INPUT', 'yes').lower() == 'yes',
+                'notify_failed': settings.get('NOTIFY_TICKET_FAILED', 'yes').lower() == 'yes',
+                'notify_watchdog': settings.get('NOTIFY_WATCHDOG_ALERT', 'yes').lower() == 'yes'
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/settings', methods=['POST'])
+@login_required
+def save_settings():
+    """Save settings to system.conf"""
+    try:
+        data = request.get_json() or {}
+        config_file = '/etc/fotios-claude/system.conf'
+
+        # Read existing config
+        existing = {}
+        if os.path.exists(config_file):
+            with open(config_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, value = line.split('=', 1)
+                        existing[key.strip()] = value.strip()
+
+        # Update Telegram settings
+        existing['TELEGRAM_BOT_TOKEN'] = data.get('telegram_bot_token', '')
+        existing['TELEGRAM_CHAT_ID'] = data.get('telegram_chat_id', '')
+        existing['NOTIFY_TICKET_COMPLETED'] = 'yes' if data.get('notify_completed', True) else 'no'
+        existing['NOTIFY_AWAITING_INPUT'] = 'yes' if data.get('notify_awaiting', True) else 'no'
+        existing['NOTIFY_TICKET_FAILED'] = 'yes' if data.get('notify_failed', True) else 'no'
+        existing['NOTIFY_WATCHDOG_ALERT'] = 'yes' if data.get('notify_watchdog', True) else 'no'
+
+        # Write back
+        with open(config_file, 'w') as f:
+            f.write("# Fotios Claude System Configuration\n")
+            for key, value in existing.items():
+                f.write(f"{key}={value}\n")
+
+        # Restart daemon to load new settings
+        try:
+            subprocess.run(['sudo', 'systemctl', 'restart', 'fotios-claude-daemon'],
+                          timeout=10, capture_output=True)
+        except:
+            pass  # Non-critical, daemon will load on next restart
+
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/settings/test-telegram', methods=['POST'])
+@login_required
+def test_telegram():
+    """Send a test notification via Telegram"""
+    try:
+        data = request.get_json() or {}
+        token = data.get('token', '').strip()
+        chat_id = data.get('chat_id', '').strip()
+
+        if not token or not chat_id:
+            return jsonify({'success': False, 'error': 'Missing token or chat_id'})
+
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = json.dumps({
+            'chat_id': chat_id,
+            'text': '✅ <b>Fotios Claude System</b>\n\nTest notification successful!\nYou will receive alerts when tickets need attention.',
+            'parse_mode': 'HTML'
+        }).encode('utf-8')
+
+        req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'})
+        resp = urllib.request.urlopen(req, timeout=10)
+        result = json.loads(resp.read().decode('utf-8'))
+
+        if result.get('ok'):
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': result.get('description', 'Unknown error')})
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode('utf-8')
+        try:
+            error_json = json.loads(error_body)
+            return jsonify({'success': False, 'error': error_json.get('description', 'HTTP error')})
+        except:
+            return jsonify({'success': False, 'error': f'HTTP {e.code}'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
