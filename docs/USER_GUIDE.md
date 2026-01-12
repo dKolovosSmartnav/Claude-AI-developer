@@ -281,6 +281,30 @@ Get instant alerts on your phone when Claude needs attention.
 | ❌ Task Failed | Something went wrong during execution |
 | ⚠️ Watchdog Alert | A ticket appears to be stuck |
 
+#### Two-Way Communication
+
+You can reply directly to notifications from your phone:
+
+**Reply to Give Instructions:**
+Simply reply to any notification with your message. The system will:
+- Add your message to the ticket conversation
+- Reopen the ticket if it was "awaiting input"
+- Claude will start working on your new instructions
+
+**Ask Quick Questions:**
+Start your reply with `?` to get a quick status update without reopening the ticket:
+- `?what's the status` - Get a summary
+- `?τι γίνεται` - Works in any language
+- `?what went wrong` - Quick error info
+
+The system uses Claude Haiku for fast, low-cost answers.
+
+| Your Reply | What Happens |
+|------------|--------------|
+| `fix the login bug` | Message added, ticket reopens, Claude works |
+| `?what's wrong` | Get summary, ticket stays as-is |
+| `looks good, continue` | Message added, ticket reopens |
+
 ---
 
 ## Tips & Best Practices

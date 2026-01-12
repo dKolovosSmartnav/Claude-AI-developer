@@ -36,6 +36,23 @@ Unlike chat-based AI tools that require constant prompting, this system runs **u
 - Built-in failsafe prevents runaway sessions
 - Wake up to progress, not prompts
 
+### Control Everything from Your Phone
+
+Work from anywhere with **two-way Telegram integration**. No need to open a laptop.
+
+- **Get instant alerts** when Claude needs your input or something fails
+- **Reply to continue** - just reply to any notification to give Claude new instructions
+- **Ask quick questions** - start with `?` to get status updates without triggering work
+- **Never lose time** - respond from the bus, the coffee shop, or your bed
+
+```
+📱 Notification: "Task completed - awaiting review"
+     ↓
+💬 You reply: "add error handling too"
+     ↓
+🤖 Claude continues working
+```
+
 ---
 
 ## Screenshots
@@ -109,14 +126,13 @@ Claude can see exactly what you see:
 - **No more explaining** - Just click "👁️ See" and Claude sees the problem
 - **Automatic when needed** - Mention visual issues and Claude uses Playwright automatically
 
-#### Telegram Notifications - Stay Informed Anywhere
-Get instant alerts on your phone when Claude needs attention:
-- **Awaiting Input** - Notified when Claude completes a task and waits for your review
-- **Task Failed** - Immediate alert if something goes wrong
-- **Watchdog Alerts** - Know when a ticket gets stuck
-- **Easy Setup** - Configure directly from the Settings panel (⚙️)
-- **Two-Way Communication** - Reply to notifications to add messages to tickets
-- **Quick Questions** - Start reply with "?" for instant status summaries
+#### Telegram - Work from Your Phone
+Full two-way communication via Telegram. Control your AI developer from anywhere:
+- **Instant Notifications** - Get alerts when tasks complete, fail, or get stuck
+- **Reply to Execute** - Reply to any notification and Claude starts working
+- **Quick Questions** - Add `?` to get instant status updates via AI
+- **Never Wait** - Respond immediately from your phone, no laptop needed
+- **Easy Setup** - One-click configuration from Settings panel (⚙️)
 
 ### Core AI Features
 - **Autonomous AI Agent** - Claude AI works on tickets independently, writing real code

@@ -80,6 +80,14 @@ def send_telegram(message, parse_mode="HTML"):
 # Telegram polling for replies
 TELEGRAM_LAST_UPDATE_ID = 0
 
+def log_debug(message):
+    """Write debug message to log file"""
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        with open(LOG_FILE, 'a') as f:
+            f.write(f"[{timestamp}] [DEBUG] {message}\n")
+    except: pass
+
 def poll_telegram_replies():
     """Poll Telegram for new reply messages"""
     global TELEGRAM_LAST_UPDATE_ID
@@ -98,29 +106,39 @@ def poll_telegram_replies():
             for update in data['result']:
                 TELEGRAM_LAST_UPDATE_ID = update['update_id']
                 msg = update.get('message', {})
+                msg_text = msg.get('text', '')
+
+                # Debug: log received messages
+                if msg_text:
+                    log_debug(f"Telegram message received: {msg_text[:50]}...")
 
                 # Check if it's a reply to one of our messages
                 reply_to = msg.get('reply_to_message')
-                if reply_to and msg.get('text'):
+                if reply_to and msg_text:
                     # Extract ticket number from original message
                     original_text = reply_to.get('text', '')
+                    log_debug(f"Reply to message: {original_text[:50]}...")
                     ticket_number = extract_ticket_from_message(original_text)
+                    log_debug(f"Extracted ticket: {ticket_number}")
                     if ticket_number:
                         replies.append({
                             'ticket_number': ticket_number,
-                            'message': msg['text'],
+                            'message': msg_text,
                             'from': msg.get('from', {}).get('first_name', 'User')
                         })
+                elif msg_text and not reply_to:
+                    log_debug(f"Not a reply - ignoring message")
         return replies
     except Exception as e:
-        print(f"[WARNING] Telegram polling failed: {e}")
+        log_debug(f"Telegram polling failed: {e}")
         return []
 
 def extract_ticket_from_message(text):
     """Extract ticket number from notification message"""
     import re
-    # Look for pattern: 🎫 Ticket: XXXX-0000
-    match = re.search(r'🎫 Ticket: ([A-Z]+-\d+)', text)
+    # Look for ticket number pattern: XXXX-0000 (e.g., WEATHERAPP-0002)
+    # Can be after 🎫 Ticket:, 📋, or standalone
+    match = re.search(r'([A-Z]+-\d+)', text)
     if match:
         return match.group(1)
     return None
@@ -1376,10 +1394,13 @@ class ClaudeDaemon:
                 ticket = cursor.fetchone()
 
                 if ticket:
-                    # Check if it's a question (starts with ?)
-                    if message.strip().startswith('?'):
+                    # Check if it's a question (starts or ends with ?)
+                    msg_stripped = message.strip()
+                    is_question = msg_stripped.startswith('?') or msg_stripped.endswith('?')
+                    if is_question:
                         # It's a question - get summary and respond without reopening
-                        question = message.strip()[1:].strip()  # Remove the ?
+                        # Remove ? from start or end
+                        question = msg_stripped.lstrip('?').rstrip('?').strip()
                         cursor.close()
                         conn.close()
                         self.handle_telegram_question(ticket, ticket_number, question)
@@ -1477,18 +1498,24 @@ Answer briefly:"""
 
             # Use claude CLI with haiku model (full path needed for daemon)
             claude_bin = os.path.expanduser('~/.local/bin/claude')
+            self.log(f"Calling Haiku: {claude_bin}", "DEBUG")
             result = subprocess.run(
-                [claude_bin, '--model', 'haiku', '-p', prompt, '--max-tokens', '200'],
+                [claude_bin, '--model', 'haiku', '-p', prompt, '--dangerously-skip-permissions'],
                 capture_output=True,
                 text=True,
                 timeout=30,
                 cwd=os.path.expanduser('~')
             )
 
+            self.log(f"Haiku returncode: {result.returncode}", "DEBUG")
+            self.log(f"Haiku stdout: {result.stdout[:100] if result.stdout else 'empty'}...", "DEBUG")
+            self.log(f"Haiku stderr: {result.stderr[:100] if result.stderr else 'empty'}...", "DEBUG")
+
             if result.returncode == 0 and result.stdout.strip():
                 return result.stdout.strip()
             else:
                 # Fallback to basic info
+                self.log(f"Haiku failed, using fallback", "WARNING")
                 return f"Status: {context.split('Status:')[1].split(chr(10))[0].strip() if 'Status:' in context else 'unknown'}"
 
         except Exception as e:
