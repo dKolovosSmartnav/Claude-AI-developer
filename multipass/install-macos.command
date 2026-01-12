@@ -131,6 +131,37 @@ echo ""
 echo "=========================================="
 echo ""
 
+# Create desktop shortcut (webloc file)
+DESKTOP_PATH="$HOME/Desktop"
+
+cat > "$DESKTOP_PATH/Claude AI Developer.webloc" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>URL</key>
+    <string>https://$IP:9453</string>
+</dict>
+</plist>
+EOF
+echo "Desktop shortcut created: Claude AI Developer.webloc"
+
+# Create start VM script
+cat > "$DESKTOP_PATH/Start Claude VM.command" << 'SCRIPT'
+#!/bin/bash
+echo "Starting Claude AI Developer VM..."
+multipass start claude-dev
+echo ""
+echo "VM started! Opening dashboard..."
+sleep 3
+SCRIPT
+echo "IP=\$(multipass exec claude-dev -- hostname -I | awk '{print \$1}')" >> "$DESKTOP_PATH/Start Claude VM.command"
+echo "open \"https://\$IP:9453\"" >> "$DESKTOP_PATH/Start Claude VM.command"
+chmod +x "$DESKTOP_PATH/Start Claude VM.command"
+echo "Desktop shortcut created: Start Claude VM.command"
+
+echo ""
+
 # Ask to open browser
 read -p "Open dashboard in browser? (y/n): " open_browser
 if [[ "$open_browser" == "y" ]]; then

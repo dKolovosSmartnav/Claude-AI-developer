@@ -205,6 +205,35 @@ Write-Host ""
 Write-Host "==========================================" -ForegroundColor Green
 Write-Host ""
 
+# Create desktop shortcut
+$desktopPath = [Environment]::GetFolderPath("Desktop")
+$shortcutPath = Join-Path $desktopPath "Claude AI Developer.url"
+
+$shortcutContent = @"
+[InternetShortcut]
+URL=https://${ip}:9453
+IconIndex=0
+"@
+
+$shortcutContent | Out-File -FilePath $shortcutPath -Encoding ascii
+Write-Host "Desktop shortcut created: Claude AI Developer" -ForegroundColor Green
+
+# Also create a batch file to start the VM
+$startVmPath = Join-Path $desktopPath "Start Claude VM.bat"
+$startVmContent = @"
+@echo off
+echo Starting Claude AI Developer VM...
+multipass start claude-dev
+echo.
+echo VM started! Opening dashboard...
+timeout /t 5 /nobreak >nul
+start https://${ip}:9453
+"@
+$startVmContent | Out-File -FilePath $startVmPath -Encoding ascii
+Write-Host "Desktop shortcut created: Start Claude VM" -ForegroundColor Green
+
+Write-Host ""
+
 # Open browser
 $openBrowser = Read-Host "Open dashboard in browser? (y/n)"
 if ($openBrowser -eq 'y') {

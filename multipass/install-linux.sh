@@ -149,6 +149,38 @@ echo ""
 echo "=========================================="
 echo ""
 
+# Create desktop shortcut (.desktop file)
+DESKTOP_PATH="$HOME/Desktop"
+mkdir -p "$DESKTOP_PATH"
+
+cat > "$DESKTOP_PATH/claude-ai-developer.desktop" << EOF
+[Desktop Entry]
+Version=1.0
+Type=Link
+Name=Claude AI Developer
+Comment=Open Claude AI Developer Dashboard
+Icon=web-browser
+URL=https://$IP:9453
+EOF
+chmod +x "$DESKTOP_PATH/claude-ai-developer.desktop"
+echo "Desktop shortcut created: claude-ai-developer.desktop"
+
+# Create start VM script
+cat > "$DESKTOP_PATH/start-claude-vm.sh" << 'SCRIPT'
+#!/bin/bash
+echo "Starting Claude AI Developer VM..."
+multipass start claude-dev
+echo ""
+echo "VM started! Opening dashboard..."
+sleep 3
+IP=$(multipass exec claude-dev -- hostname -I | awk '{print $1}')
+xdg-open "https://$IP:9453" 2>/dev/null || echo "Open browser: https://$IP:9453"
+SCRIPT
+chmod +x "$DESKTOP_PATH/start-claude-vm.sh"
+echo "Desktop shortcut created: start-claude-vm.sh"
+
+echo ""
+
 # Try to open browser
 read -p "Open dashboard in browser? (y/n): " open_browser
 if [[ "$open_browser" == "y" ]]; then
