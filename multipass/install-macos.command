@@ -102,7 +102,6 @@ echo "      Live installation progress:"
 echo "      ─────────────────────────────"
 
 # Wait for cloud-init log to exist
-echo "      Waiting for installation to start..."
 for i in {1..60}; do
     if multipass exec claude-dev -- test -f /var/log/cloud-init-output.log 2>/dev/null; then
         break
@@ -110,24 +109,33 @@ for i in {1..60}; do
     sleep 2
 done
 
-# Follow the log until we see completion marker or services start
-# timeout will kill tail after 20 minutes max
-timeout 1200 multipass exec claude-dev -- bash -c '
-    tail -f /var/log/cloud-init-output.log &
-    TAIL_PID=$!
+# Poll the log file and show new lines
+LAST_LINES=0
+MAX_WAIT=240  # 240 iterations x 5 seconds = 20 minutes
 
-    while true; do
-        sleep 5
-        if [ -f /root/install-complete ]; then
-            kill $TAIL_PID 2>/dev/null
-            exit 0
-        fi
-        if systemctl is-active codehero-web >/dev/null 2>&1; then
-            kill $TAIL_PID 2>/dev/null
-            exit 0
-        fi
-    done
-' 2>/dev/null || true
+for i in $(seq 1 $MAX_WAIT); do
+    # Get current line count
+    CURRENT_LINES=$(multipass exec claude-dev -- wc -l /var/log/cloud-init-output.log 2>/dev/null | awk '{print $1}' || echo "0")
+
+    # Show new lines if any
+    if [ "$CURRENT_LINES" -gt "$LAST_LINES" ]; then
+        START=$((LAST_LINES + 1))
+        multipass exec claude-dev -- sed -n "${START},${CURRENT_LINES}p" /var/log/cloud-init-output.log 2>/dev/null
+        LAST_LINES=$CURRENT_LINES
+    fi
+
+    # Check if install completed
+    if multipass exec claude-dev -- test -f /root/install-complete 2>/dev/null; then
+        break
+    fi
+
+    # Check if services are running
+    if multipass exec claude-dev -- systemctl is-active codehero-web >/dev/null 2>&1; then
+        break
+    fi
+
+    sleep 5
+done
 
 echo ""
 echo "      ─────────────────────────────"
