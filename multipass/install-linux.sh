@@ -113,8 +113,6 @@ multipass launch 24.04 --name claude-dev --memory 6G --disk 64G --cpus 4 --timeo
 echo "[5/5] Waiting for installation to complete..."
 echo "      This may take 10-15 more minutes..."
 echo ""
-echo "      Live installation progress:"
-echo "      ─────────────────────────────"
 
 # Wait for cloud-init log to exist
 for i in {1..60}; do
@@ -124,37 +122,32 @@ for i in {1..60}; do
     sleep 2
 done
 
-# Poll the log file and show new lines
-LAST_LINES=0
-MAX_WAIT=240  # 240 iterations x 5 seconds = 20 minutes
-
-for i in $(seq 1 $MAX_WAIT); do
-    # Get current line count
-    CURRENT_LINES=$(multipass exec claude-dev -- wc -l /var/log/cloud-init-output.log 2>/dev/null | awk '{print $1}' || echo "0")
-
-    # Show new lines if any
-    if [ "$CURRENT_LINES" -gt "$LAST_LINES" ]; then
-        START=$((LAST_LINES + 1))
-        multipass exec claude-dev -- sed -n "${START},${CURRENT_LINES}p" /var/log/cloud-init-output.log 2>/dev/null
-        LAST_LINES=$CURRENT_LINES
-    fi
+# Show progress by displaying last lines periodically
+while true; do
+    # Clear screen and show last 30 lines
+    clear
+    echo "=========================================="
+    echo "  Installation Progress (updating every 3s)"
+    echo "=========================================="
+    echo ""
+    multipass exec claude-dev -- tail -30 /var/log/cloud-init-output.log 2>/dev/null
+    echo ""
+    echo "=========================================="
 
     # Check if install completed
     if multipass exec claude-dev -- test -f /root/install-complete 2>/dev/null; then
+        echo "Installation complete!"
         break
     fi
 
     # Check if services are running
     if multipass exec claude-dev -- systemctl is-active codehero-web >/dev/null 2>&1; then
+        echo "Installation complete!"
         break
     fi
 
-    sleep 5
+    sleep 3
 done
-
-echo ""
-echo "      ─────────────────────────────"
-echo "      Installation complete!"
 
 # Get IP address
 IP=$(multipass exec claude-dev -- hostname -I | awk '{print $1}')
