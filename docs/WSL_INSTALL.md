@@ -400,13 +400,34 @@ journalctl -u fotios-claude-daemon -n 50
 
 ---
 
+## Quick Reference - Get IP Address
+
+The most common task after installation:
+
+**From PowerShell:**
+```powershell
+wsl -d Ubuntu-24.04 --exec hostname -I
+```
+
+**From inside WSL:**
+```bash
+hostname -I
+```
+
+**Example output:** `172.25.123.45`
+**Dashboard URL:** `https://172.25.123.45:9453`
+
+**Tip:** The IP may change after restart. Always check with the command above.
+
+---
+
 ## Useful Commands Reference
 
-| Task | Command |
+| Task | Command (PowerShell) |
 |------|---------|
+| **Get IP address** | `wsl -d Ubuntu-24.04 --exec hostname -I` |
 | Open Ubuntu | `wsl -d Ubuntu-24.04` |
 | Shutdown WSL | `wsl --shutdown` |
-| Get IP | `wsl -d Ubuntu-24.04 --exec hostname -I` |
 | Start services | `wsl -d Ubuntu-24.04 --exec systemctl start fotios-claude-web` |
 | Check services | `wsl -d Ubuntu-24.04 --exec systemctl status fotios-claude-web` |
 | List distros | `wsl --list --verbose` |

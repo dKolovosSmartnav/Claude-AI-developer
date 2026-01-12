@@ -512,17 +512,33 @@ multipass delete claude-dev --purge
 
 ---
 
+## Quick Reference - Get IP Address
+
+The most common task after installation:
+
+```bash
+# Get VM IP address
+multipass exec claude-dev -- hostname -I
+
+# Example output: 192.168.64.5
+# Dashboard URL: https://192.168.64.5:9453
+```
+
+**Tip:** The IP may change after VM restart. Always check with the command above.
+
+---
+
 ## Command Reference
 
 | Task | Command |
 |------|---------|
+| **Get IP address** | `multipass exec claude-dev -- hostname -I` |
 | List VMs | `multipass list` |
 | Start VM | `multipass start claude-dev` |
 | Stop VM | `multipass stop claude-dev` |
 | Restart VM | `multipass restart claude-dev` |
 | Open shell | `multipass shell claude-dev` |
 | Run command | `multipass exec claude-dev -- <command>` |
-| Get IP | `multipass exec claude-dev -- hostname -I` |
 | VM info | `multipass info claude-dev` |
 | Delete VM | `multipass delete claude-dev --purge` |
 | View logs | `multipass exec claude-dev -- journalctl -u fotios-claude-web` |
