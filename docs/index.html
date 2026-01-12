@@ -491,6 +491,26 @@
             text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
         }
 
+        /* Together work layout - both on work side */
+        .together-work {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .person-icon-small {
+            font-size: 3rem;
+            filter: drop-shadow(0 0 15px rgba(255,255,255,0.2));
+        }
+
+        /* Empty human side placeholder */
+        .human-side.empty {
+            opacity: 0.4;
+            min-width: 120px;
+        }
+
         /* Mini hero character */
         .hero-icon-mini {
             position: relative;
@@ -1662,19 +1682,26 @@
 
         function renderScene(scene) {
             if (scene.type === "together") {
-                // Working together - side by side in center
+                // Working together - both on the right (work side)
                 return `
-                    <div class="together-view">
-                        <div class="person-icon">${scene.humanEmoji}</div>
-                        <div class="plus-sign">+</div>
-                        <div class="hero-icon-mini">
-                            <div class="hero-cape-mini"></div>
-                            <div class="hero-body-mini"></div>
-                            <div class="hero-head-mini"><div class="hero-mask-mini"></div></div>
+                    <div class="apart-view">
+                        <div class="human-side empty">
+                            <div class="human-status" style="color: #64748b;">Your desk</div>
+                        </div>
+                        <div class="scene-divider"></div>
+                        <div class="codehero-side">
+                            <div class="together-work">
+                                <div class="person-icon-small">${scene.humanEmoji}</div>
+                                <div class="hero-icon-mini working">
+                                    <div class="hero-cape-mini"></div>
+                                    <div class="hero-body-mini"></div>
+                                    <div class="hero-head-mini"><div class="hero-mask-mini"></div></div>
+                                </div>
+                            </div>
+                            <div class="laptop-status"><span class="status-dot"></span> Working together</div>
+                            <div class="code-progress-mini">${scene.codeText}</div>
                         </div>
                     </div>
-                    <div class="together-label">Working together on your project</div>
-                    <div class="code-progress">${scene.codeText}</div>
                 `;
             } else {
                 // Apart - human left, CodeHero right
