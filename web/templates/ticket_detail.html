@@ -585,7 +585,11 @@
             <div class="tab-content" id="tab-preview" style="flex-direction:column">
                 <div class="view-toggle">
                     <label style="color:var(--text-muted)">{{ ticket.preview_url }}</label>
-                    <button onclick="refreshPreview()" style="margin-left:auto;padding:6px 16px;background:var(--bg-card);border:1px solid var(--border-subtle);color:var(--text-primary);border-radius:6px;cursor:pointer;font-size:12px">Refresh</button>
+                    <label style="margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text-secondary)">
+                        <input type="checkbox" id="auto-refresh-toggle" checked style="cursor:pointer">
+                        Auto-refresh (15s)
+                    </label>
+                    <button onclick="refreshPreview()" style="margin-left:12px;padding:6px 16px;background:var(--bg-card);border:1px solid var(--border-subtle);color:var(--text-primary);border-radius:6px;cursor:pointer;font-size:12px">Refresh</button>
                     <button onclick="window.open('{{ ticket.preview_url }}', '_blank')" style="padding:6px 16px;background:var(--accent-cyan);border:none;color:#000;border-radius:6px;cursor:pointer;margin-left:8px;font-size:12px;font-weight:600">Open</button>
                 </div>
                 <iframe id="preview-frame" src="" style="flex:1;border:none;background:#fff;width:100%"></iframe>
@@ -1047,15 +1051,53 @@
             else if (tabName === 'preview') loadPreview();
         }
 
+        let previewRefreshInterval = null;
+
         function loadPreview() {
-            const frame = document.getElementById('preview-frame');
-            if (frame && previewUrl && !frame.src) frame.src = previewUrl;
+            refreshPreview();  // Always refresh when tab opens
+            startPreviewAutoRefresh();
         }
 
         function refreshPreview() {
             const frame = document.getElementById('preview-frame');
-            if (frame && previewUrl) frame.src = previewUrl + (previewUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+            if (frame && previewUrl) {
+                frame.src = previewUrl + (previewUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+            }
         }
+
+        function startPreviewAutoRefresh() {
+            stopPreviewAutoRefresh();  // Clear any existing interval
+            const toggle = document.getElementById('auto-refresh-toggle');
+            if (toggle && toggle.checked) {
+                previewRefreshInterval = setInterval(() => {
+                    const toggle = document.getElementById('auto-refresh-toggle');
+                    if (toggle && toggle.checked) {
+                        refreshPreview();
+                    }
+                }, 15000);  // 15 seconds
+            }
+        }
+
+        function stopPreviewAutoRefresh() {
+            if (previewRefreshInterval) {
+                clearInterval(previewRefreshInterval);
+                previewRefreshInterval = null;
+            }
+        }
+
+        // Toggle auto-refresh when checkbox changes
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggle = document.getElementById('auto-refresh-toggle');
+            if (toggle) {
+                toggle.addEventListener('change', function() {
+                    if (this.checked) {
+                        startPreviewAutoRefresh();
+                    } else {
+                        stopPreviewAutoRefresh();
+                    }
+                });
+            }
+        });
 
         let isFormatted = true;
 

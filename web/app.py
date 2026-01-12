@@ -1457,6 +1457,7 @@ def api_projects():
         tech_stack = data.get('tech_stack', '').strip()
         web_path = data.get('web_path', '').strip()
         app_path = data.get('app_path', '').strip()
+        preview_url = data.get('preview_url', '').strip()
         context = data.get('context', '').strip()
         ai_model = data.get('ai_model', 'sonnet')
         skip_database = data.get('skip_database', False)
@@ -1488,11 +1489,11 @@ def api_projects():
         try:
             cursor.execute("""
                 INSERT INTO projects (name, code, description, project_type, tech_stack,
-                    web_path, app_path, context, db_name, db_user, db_password, db_host,
+                    web_path, app_path, preview_url, context, db_name, db_user, db_password, db_host,
                     ai_model, status, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'localhost', %s, 'active', NOW(), NOW())
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'localhost', %s, 'active', NOW(), NOW())
             """, (name, code, description, project_type, tech_stack or None,
-                  web_path or None, app_path or None, context or None,
+                  web_path or None, app_path or None, preview_url or None, context or None,
                   db_name, db_user, db_password, ai_model))
             conn.commit()
             project_id = cursor.lastrowid
@@ -1637,8 +1638,12 @@ def ticket_detail(ticket_id):
             WHERE t.id = %s
         """, (ticket_id,))
         ticket = cursor.fetchone()
-        
+
         if ticket:
+            # Generate default preview_url if not set
+            if not ticket.get('preview_url') and ticket.get('project_code'):
+                host = request.host.split(':')[0]  # Get hostname without port
+                ticket['preview_url'] = f"https://{host}:9867/{ticket['project_code'].lower()}"
             cursor.execute("""
                 SELECT * FROM conversation_messages 
                 WHERE ticket_id = %s ORDER BY created_at ASC
