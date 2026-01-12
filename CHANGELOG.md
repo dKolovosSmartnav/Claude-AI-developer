@@ -5,6 +5,17 @@ All notable changes to the Fotios Claude System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.53.0] - 2026-01-12
+
+### Changed
+- **Admin Panel Rebrand** - All pages now show "CodeHero" instead of "Fotios Claude"
+  - Updated page titles across all templates
+  - Updated navigation headers
+  - Updated login page branding
+  - Updated Claude Assistant help text
+- **Repository Rename** - Changed from "Claude-AI-developer" to "codehero"
+  - Updated all GitHub URLs across documentation and scripts
+
 ## [2.52.0] - 2026-01-12
 
 ### Added
