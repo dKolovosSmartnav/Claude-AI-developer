@@ -98,16 +98,18 @@
         }
 
         .logo-icon {
-            width: 72px;
-            height: 72px;
+            width: 80px;
+            height: 96px;
             margin: 0 auto 16px;
-            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 36px;
-            box-shadow: var(--glow-primary);
+        }
+
+        .logo-icon svg {
+            width: 80px;
+            height: 96px;
+            filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.4));
         }
 
         .login-header h1 {
@@ -203,7 +205,33 @@
 
     <div class="login-card">
         <div class="login-header">
-            <div class="logo-icon">🤖</div>
+            <div class="logo-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120">
+                    <defs>
+                        <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#6366f1"/>
+                            <stop offset="100%" style="stop-color:#4f46e5"/>
+                        </linearGradient>
+                        <linearGradient id="headGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#818cf8"/>
+                            <stop offset="100%" style="stop-color:#6366f1"/>
+                        </linearGradient>
+                        <linearGradient id="capeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#a78bfa"/>
+                            <stop offset="100%" style="stop-color:#7c3aed"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M25 45 L50 40 L75 45 L85 110 L50 95 L15 110 Z" fill="url(#capeGrad)"/>
+                    <rect x="32" y="50" width="36" height="50" rx="8" fill="url(#bodyGrad)"/>
+                    <text x="50" y="82" font-family="monospace" font-size="14" font-weight="bold" fill="#22d3ee" text-anchor="middle">&lt;/&gt;</text>
+                    <circle cx="50" cy="30" r="22" fill="url(#headGrad)"/>
+                    <rect x="35" y="24" width="30" height="12" rx="4" fill="#0f0f23"/>
+                    <rect x="38" y="27" width="8" height="6" rx="2" fill="#22d3ee"/>
+                    <rect x="54" y="27" width="8" height="6" rx="2" fill="#22d3ee"/>
+                    <rect x="20" y="55" width="12" height="30" rx="4" fill="url(#bodyGrad)" transform="rotate(15, 26, 55)"/>
+                    <rect x="68" y="55" width="12" height="30" rx="4" fill="url(#bodyGrad)" transform="rotate(-15, 74, 55)"/>
+                </svg>
+            </div>
             <h1>CodeHero</h1>
             <p>Autonomous Development System</p>
         </div>
