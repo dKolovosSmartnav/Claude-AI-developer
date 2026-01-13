@@ -110,6 +110,15 @@ echo ""
 # Launch VM (this will wait for cloud-init to complete)
 # Using conservative resources for compatibility
 echo "[5/5] Installing software (this takes 15-25 minutes)..."
+echo ""
+echo "      ┌─────────────────────────────────────────────────────┐"
+echo "      │  TIP: To see live installation progress, open a    │"
+echo "      │  NEW terminal window and run:                      │"
+echo "      │                                                    │"
+echo "      │  multipass shell claude-dev                        │"
+echo "      │  tail -f /var/log/cloud-init-output.log            │"
+echo "      └─────────────────────────────────────────────────────┘"
+echo ""
 echo "      Please wait..."
 echo ""
 
