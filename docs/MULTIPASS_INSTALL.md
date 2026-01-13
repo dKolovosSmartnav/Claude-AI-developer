@@ -58,7 +58,7 @@ Multipass is a free tool from Canonical (makers of Ubuntu) that creates lightwei
 #### Option 1: One-Line Install (Terminal)
 
 ```bash
-curl -sL https://raw.githubusercontent.com/fotsakir/codehero/main/multipass/install-macos.command -o /tmp/install.command && chmod +x /tmp/install.command && /tmp/install.command
+curl -sL https://raw.githubusercontent.com/fotsakir/codehero/main/multipass/install-macos.command | bash
 ```
 
 #### Option 2: Download and Double-Click
@@ -87,7 +87,7 @@ curl -sL https://raw.githubusercontent.com/fotsakir/codehero/main/multipass/inst
 #### One-Line Install
 
 ```bash
-curl -sL https://raw.githubusercontent.com/fotsakir/codehero/main/multipass/install-linux.sh -o /tmp/install.sh && chmod +x /tmp/install.sh && /tmp/install.sh
+curl -sL https://raw.githubusercontent.com/fotsakir/codehero/main/multipass/install-linux.sh | bash
 ```
 
 #### What Happens
