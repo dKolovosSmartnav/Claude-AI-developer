@@ -398,6 +398,25 @@ CREATE TABLE `user_preferences` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `daemon_logs`
+--
+
+DROP TABLE IF EXISTS `daemon_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `daemon_logs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `ticket_id` int DEFAULT NULL,
+  `log_type` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'info',
+  `message` text COLLATE utf8mb4_unicode_ci,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_ticket_id` (`ticket_id`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Daemon activity logs';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Temporary view structure for view `v_projects_needing_map`
 --
 
