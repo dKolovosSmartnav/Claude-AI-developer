@@ -10,12 +10,15 @@ packages:
   - wget
   - curl
   - net-tools
+  - openssh-server
 
 users:
   - name: claude
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
     groups: [sudo]
+    ssh_authorized_keys:
+      - PASTE_YOUR_SSH_PUBLIC_KEY_HERE
 
 write_files:
   - path: /root/install-claude-system.sh
@@ -93,8 +96,24 @@ write_files:
       echo ""
       echo "=========================================="
 
+      # Configure SSH readiness
+      echo "Configuring SSH server for security..."
+      echo "PubkeyAuthentication yes" >> /etc/ssh/sshd_config
+      echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
+      echo "KbdInteractiveAuthentication no" >> /etc/ssh/sshd_config
+      echo "ChallengeResponseAuthentication no" >> /etc/ssh/sshd_config
+
+      PermitRootLogin no
+      AllowUsers claude
+
+      # Keep connection stable for VS Code Remote-SSH
+      ClientAliveInterval 60
+      ClientAliveCountMax 3
+
       # Mark installation as complete
       echo "done" > /root/install-complete
 
 runcmd:
   - /root/install-claude-system.sh
+  - systemctl enable ssh
+  - systemctl restart sshd
