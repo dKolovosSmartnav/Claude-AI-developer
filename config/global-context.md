@@ -43,6 +43,16 @@ Multiple options? Unclear requirements? Could break something? → ASK FIRST
 - ALL inputs = Validated
 - ALL outputs = Escaped
 
+**NO PERSONAL INFO in config files!**
+When creating composer.json, package.json, or any config with author fields:
+```json
+// ✅ ALWAYS use project name:
+"author": "ProjectName Team"
+// ✅ Or generic:
+"author": "Development Team"
+// ❌ NEVER use personal emails or real names
+```
+
 ### 6. PLAYWRIGHT-READY
 All UI elements need `data-testid` so AI can test:
 ```html

@@ -657,7 +657,7 @@ This project uses a **Dual License** - free for personal use and small businesse
 
 **Fotios Tsakiridis** ([@fotsakir](https://github.com/fotsakir))
 
-[Smartnav Telematic Services Cyprus Ltd](https://smartnav.eu)
+[Smartnav Telematic Services Cyprus Ltd](https://routeplanner.gr)
 
 ## Keywords
 
