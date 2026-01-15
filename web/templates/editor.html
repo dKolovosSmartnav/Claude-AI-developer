@@ -446,6 +446,31 @@
                     <button onclick="popoutEditor()" title="Open Editor in new window">⧉</button>
                 </div>
             </div>
+            {% if project.web_path and project.app_path %}
+            <div class="path-tabs" style="display:flex;padding:8px 10px;gap:6px;border-bottom:1px solid var(--border-subtle);">
+                <button class="path-tab-btn active" data-path="web" onclick="switchPathTab('web')">🌐 Web</button>
+                <button class="path-tab-btn" data-path="app" onclick="switchPathTab('app')">📱 App</button>
+            </div>
+            <style>
+                .path-tab-btn {
+                    flex: 1;
+                    padding: 6px 10px;
+                    background: transparent;
+                    border: 1px solid var(--border-subtle);
+                    border-radius: 6px;
+                    color: var(--text-muted);
+                    cursor: pointer;
+                    font-size: 11px;
+                    transition: all 0.2s;
+                }
+                .path-tab-btn:hover { background: rgba(99, 102, 241, 0.1); }
+                .path-tab-btn.active {
+                    background: var(--accent-primary);
+                    color: white;
+                    border-color: var(--accent-primary);
+                }
+            </style>
+            {% endif %}
             <div class="tree-container" id="fileTree">
                 <div style="padding:20px;color:#888;text-align:center">Loading...</div>
             </div>
@@ -500,7 +525,25 @@
 
     <script>
         const projectId = {{ project.id }};
-        const basePath = '{{ project.web_path or project.app_path or "" }}';
+        const webPath = '{{ project.web_path or "" }}';
+        const appPath = '{{ project.app_path or "" }}';
+        let currentPathType = 'web';
+
+        function switchPathTab(pathType) {
+            currentPathType = pathType;
+            // Update tab styling
+            document.querySelectorAll('.path-tab-btn').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.path === pathType);
+            });
+            // Close all open files and reload tree
+            openFiles = {};
+            currentFile = null;
+            document.getElementById('editorTabs').innerHTML = '';
+            document.getElementById('editor').style.display = 'none';
+            document.getElementById('noFile').style.display = 'flex';
+            updateToolbar();
+            loadTree();
+        }
 
         function popoutEditor() {
             const width = 1200;
@@ -564,7 +607,7 @@
             container.innerHTML = '<div style="padding:20px;color:#888;text-align:center">Loading...</div>';
 
             try {
-                const resp = await fetch(`/api/project/${projectId}/editor/tree`);
+                const resp = await fetch(`/api/project/${projectId}/editor/tree?path_type=${currentPathType}`);
                 const result = await resp.json();
 
                 if (!result.success) {
@@ -639,7 +682,7 @@
             }
 
             try {
-                const resp = await fetch(`/api/project/${projectId}/editor/file?path=${encodeURIComponent(path)}`);
+                const resp = await fetch(`/api/project/${projectId}/editor/file?path=${encodeURIComponent(path)}&path_type=${currentPathType}`);
                 const result = await resp.json();
 
                 if (!result.success) {
@@ -654,7 +697,8 @@
                     content: result.content,
                     originalContent: result.content,
                     modified: false,
-                    mode: mode
+                    mode: mode,
+                    pathType: currentPathType  // Store which path type this file belongs to
                 };
 
                 addTab(path);
@@ -787,12 +831,13 @@
 
             const file = openFiles[currentFile];
             const content = editor.getValue();
+            const pathType = file.pathType || currentPathType;
 
             try {
                 const resp = await fetch(`/api/project/${projectId}/editor/file`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({path: currentFile, content: content})
+                    body: JSON.stringify({path: currentFile, content: content, path_type: pathType})
                 });
                 const result = await resp.json();
 
@@ -885,7 +930,7 @@
                 const resp = await fetch(`/api/project/${projectId}/editor/create`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({path: path, type: newItemType})
+                    body: JSON.stringify({path: path, type: newItemType, path_type: currentPathType})
                 });
                 const result = await resp.json();
 
@@ -926,7 +971,7 @@
                 const resp = await fetch(`/api/project/${projectId}/editor/rename`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({old_path: oldPath, new_path: newPath})
+                    body: JSON.stringify({old_path: oldPath, new_path: newPath, path_type: currentPathType})
                 });
                 const result = await resp.json();
 
@@ -971,7 +1016,7 @@
                 const resp = await fetch(`/api/project/${projectId}/files/delete`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({path: path})
+                    body: JSON.stringify({path: path, path_type: currentPathType})
                 });
                 const result = await resp.json();
 

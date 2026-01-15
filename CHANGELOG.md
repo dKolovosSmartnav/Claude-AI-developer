@@ -5,6 +5,48 @@ All notable changes to CodeHero will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.61.1] - 2026-01-15
+
+### Added
+- **Path Tabs in Editor** - Switch between web_path and app_path in code editor
+- **Path Tabs in Ticket** - File uploads support both paths with tab selection
+- **Path Tabs in Project Settings** - File browser supports both paths
+
+### Fixed
+- **Migration Scripts** - Made 2.61.0 and 2.61.1 migrations idempotent (safe to run multiple times)
+- **Schema Sync** - Updated schema.sql with all new fields for clean installs
+
+## [2.61.0] - 2026-01-15
+
+### Added
+- **Android Emulator Support** - Full Android development environment
+  - Server-based emulator using Redroid (Android 15 in Docker)
+  - Web-based screen mirroring via ws-scrcpy (port 8443)
+  - ADB integration for APK install, logs, screenshots
+  - Remote ADB support for physical devices
+  - Setup script: `setup_android.sh`
+- **.NET / ASP.NET Core Support** - Windows development on Linux
+  - .NET 8 SDK with auto Nginx reverse proxy
+  - Systemd services for each .NET app with auto-restart
+  - Automatic port allocation (5001+)
+  - PowerShell 7, Wine 11, Mono 6.12 included
+  - Setup script: `setup_windows.sh`
+- **Mobile Frameworks** - New project types
+  - Capacitor.js (Ionic)
+  - React Native
+  - Flutter (with SDK)
+  - Native Android (Gradle)
+- **Smart Context** - Framework-specific context for Claude
+  - Android development commands and ADB usage
+  - .NET commands and service management
+- **Documentation** - Updated README, INSTALL.md, website
+  - New "Supported Platforms" section
+  - Setup instructions for Android and .NET environments
+
+### Changed
+- **Project Types** - Added 'dotnet' to project_type ENUM
+- **Projects Table** - New fields: dotnet_port, android_device_type, android_remote_host, android_remote_port, android_screen_size
+
 ## [2.60.4] - 2026-01-14
 
 ### Added

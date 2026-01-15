@@ -39,7 +39,7 @@ Use this template with Claude Assistant to design your solution. Copy the comple
 
 ### Infrastructure
 - **Hosting:** [VPS / Cloud / Shared / Local]
-- **Web Server:** [Nginx / Apache / OpenLiteSpeed]
+- **Web Server:** [Nginx / Apache]
 - **Other Services:** [Redis / Elasticsearch / S3 / etc.]
 
 ---

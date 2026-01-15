@@ -294,7 +294,9 @@ class ProjectWorker(threading.Thread):
                 SELECT t.*, p.web_path, p.app_path, p.name as project_name, p.code as project_code,
                        p.project_type, p.tech_stack, p.context as project_context, t.context as ticket_context,
                        p.db_name, p.db_user, p.db_password, p.db_host,
-                       p.ai_model as project_ai_model, t.ai_model as ticket_ai_model
+                       p.ai_model as project_ai_model, t.ai_model as ticket_ai_model,
+                       p.android_device_type, p.android_remote_host, p.android_remote_port, p.android_screen_size,
+                       p.dotnet_port
                 FROM tickets t
                 JOIN projects p ON t.project_id = p.id
                 WHERE t.project_id = %s AND t.status IN ('open', 'new', 'pending')
@@ -826,8 +828,16 @@ Complete this task. When finished, say "TASK COMPLETED" with a summary."""
     def run_claude(self, ticket, prompt):
         """Run Claude Code within project directory"""
 
-        # Determine working directory
-        work_path = ticket.get('web_path') or ticket.get('app_path') or '/var/www/projects'
+        # Determine working directory based on project type
+        project_type = ticket.get('project_type', 'web')
+        mobile_types = ['capacitor', 'react_native', 'flutter', 'native_android', 'app', 'api', 'dotnet']
+
+        if project_type in mobile_types:
+            # For mobile/app projects, prefer app_path
+            work_path = ticket.get('app_path') or ticket.get('web_path') or '/opt/apps'
+        else:
+            # For web projects, prefer web_path
+            work_path = ticket.get('web_path') or ticket.get('app_path') or '/var/www/projects'
         work_path = os.path.abspath(work_path)
 
         # Create directories if needed
@@ -848,6 +858,7 @@ Complete this task. When finished, say "TASK COMPLETED" with a summary."""
             '--dangerously-skip-permissions',
             '-p', prompt
         ]
+        self.log(f"Starting Claude in {work_path}")
         try:
             # Load API key from .env if exists
             claude_env = os.environ.copy()
@@ -919,10 +930,14 @@ Complete this task. When finished, say "TASK COMPLETED" with a summary."""
                         process.terminate()
                         return 'stuck'
             
-            return result if result else ('success' if process.returncode == 0 else 'failed')
-            
+            final_result = result if result else ('success' if process.returncode == 0 else 'failed')
+            self.log(f"Claude finished - returncode: {process.returncode}, result: {result}, final: {final_result}", "DEBUG")
+            return final_result
+
         except Exception as e:
-            self.log(f"Error running Claude: {e}", "ERROR")
+            import traceback
+            self.log(f"Error running Claude: {e}")
+            self.log(f"Traceback: {traceback.format_exc()}")
             return 'failed'
     
     def process_ticket(self, ticket):

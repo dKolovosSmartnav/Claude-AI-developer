@@ -79,7 +79,7 @@ PID_FILE = "/var/run/codehero/daemon.pid"
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = os.urandom(24)
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', allow_upgrades=False)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', allow_upgrades=True)
 
 @app.context_processor
 def inject_version():
@@ -150,6 +150,71 @@ def create_project_database(code):
     except Exception as e:
         print(f"Database creation failed (insufficient privileges?): {e}")
         return None, None, None
+
+def get_next_dotnet_port():
+    """Get the next available port for .NET apps (5001-5999)"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT MAX(dotnet_port) as max_port FROM projects WHERE dotnet_port IS NOT NULL")
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if result and result['max_port']:
+            return result['max_port'] + 1
+        return 5001  # Start from 5001
+    except:
+        return 5001
+
+def setup_dotnet_project(code, dotnet_port, app_path):
+    """Create Nginx config and systemd service for .NET project"""
+    code_lower = code.lower()
+
+    try:
+        # Read templates
+        nginx_template_path = '/opt/codehero/config/nginx-dotnet-template.conf'
+        systemd_template_path = '/opt/codehero/config/systemd-dotnet-template.service'
+
+        # Create Nginx config
+        with open(nginx_template_path, 'r') as f:
+            nginx_config = f.read()
+
+        nginx_config = nginx_config.replace('{PROJECT_CODE}', code_lower)
+        nginx_config = nginx_config.replace('{DOTNET_PORT}', str(dotnet_port))
+
+        # Write to temp file and move with sudo
+        nginx_tmp = f'/tmp/nginx-dotnet-{code_lower}.conf'
+        with open(nginx_tmp, 'w') as f:
+            f.write(nginx_config)
+
+        nginx_path = f'/etc/nginx/codehero-dotnet/{code_lower}.conf'
+        os.system(f'sudo mv {nginx_tmp} {nginx_path}')
+
+        # Create systemd service
+        with open(systemd_template_path, 'r') as f:
+            systemd_config = f.read()
+
+        systemd_config = systemd_config.replace('{PROJECT_CODE}', code_lower)
+        systemd_config = systemd_config.replace('{DOTNET_PORT}', str(dotnet_port))
+        systemd_config = systemd_config.replace('{APP_PATH}', app_path)
+
+        # Write to temp file and move with sudo
+        service_tmp = f'/tmp/codehero-dotnet-{code_lower}.service'
+        with open(service_tmp, 'w') as f:
+            f.write(systemd_config)
+
+        service_path = f'/etc/systemd/system/codehero-dotnet-{code_lower}.service'
+        os.system(f'sudo mv {service_tmp} {service_path}')
+
+        # Reload nginx and systemd
+        os.system('sudo systemctl daemon-reload')
+        os.system('sudo nginx -s reload 2>/dev/null || true')
+
+        return True
+    except Exception as e:
+        print(f"Failed to setup .NET project configs: {e}")
+        return False
 
 def login_required(f):
     @wraps(f)
@@ -730,8 +795,8 @@ def delete_table_row(project_id, table_name):
 
 # ============ FILE EDITOR ============
 
-def get_project_path(project_id):
-    """Get project base path"""
+def get_project_path(project_id, path_type=None):
+    """Get project base path. If path_type is 'app', returns app_path first, otherwise web_path first."""
     conn = get_db()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT web_path, app_path FROM projects WHERE id = %s", (project_id,))
@@ -741,6 +806,8 @@ def get_project_path(project_id):
 
     if not project:
         return None
+    if path_type == 'app':
+        return project.get('app_path') or project.get('web_path')
     return project.get('web_path') or project.get('app_path')
 
 
@@ -782,7 +849,8 @@ def project_editor(project_id):
 @login_required
 def get_file_tree(project_id):
     """Get recursive file tree"""
-    base_path = get_project_path(project_id)
+    path_type = request.args.get('path_type', 'web')
+    base_path = get_project_path(project_id, path_type)
     if not base_path:
         return jsonify({'success': False, 'message': 'Project path not configured'})
 
@@ -827,7 +895,8 @@ def get_file_tree(project_id):
 @login_required
 def get_file_content(project_id):
     """Get file content"""
-    base_path = get_project_path(project_id)
+    path_type = request.args.get('path_type', 'web')
+    base_path = get_project_path(project_id, path_type)
     if not base_path:
         return jsonify({'success': False, 'message': 'Project path not configured'})
 
@@ -862,11 +931,12 @@ def get_file_content(project_id):
 @login_required
 def save_file_content(project_id):
     """Save file content"""
-    base_path = get_project_path(project_id)
+    data = request.json
+    path_type = data.get('path_type', 'web')
+    base_path = get_project_path(project_id, path_type)
     if not base_path:
         return jsonify({'success': False, 'message': 'Project path not configured'})
 
-    data = request.json
     file_path = data.get('path', '')
     content = data.get('content', '')
 
@@ -893,11 +963,12 @@ def save_file_content(project_id):
 @login_required
 def create_file_or_folder(project_id):
     """Create new file or folder"""
-    base_path = get_project_path(project_id)
+    data = request.json
+    path_type = data.get('path_type', 'web')
+    base_path = get_project_path(project_id, path_type)
     if not base_path:
         return jsonify({'success': False, 'message': 'Project path not configured'})
 
-    data = request.json
     path = data.get('path', '')
     item_type = data.get('type', 'file')  # 'file' or 'dir'
 
@@ -928,11 +999,12 @@ def create_file_or_folder(project_id):
 @login_required
 def rename_file_or_folder(project_id):
     """Rename file or folder"""
-    base_path = get_project_path(project_id)
+    data = request.json
+    path_type = data.get('path_type', 'web')
+    base_path = get_project_path(project_id, path_type)
     if not base_path:
         return jsonify({'success': False, 'message': 'Project path not configured'})
 
-    data = request.json
     old_path = data.get('old_path', '')
     new_path = data.get('new_path', '')
 
@@ -1284,8 +1356,12 @@ def upload_file(project_id):
         if not project:
             return jsonify({'success': False, 'message': 'Project not found'}), 404
 
-        # Determine upload directory
-        upload_dir = project.get('web_path') or project.get('app_path')
+        # Determine upload directory based on path_type parameter
+        path_type = request.form.get('path_type', 'web')
+        if path_type == 'app':
+            upload_dir = project.get('app_path') or project.get('web_path')
+        else:
+            upload_dir = project.get('web_path') or project.get('app_path')
         if not upload_dir:
             return jsonify({'success': False, 'message': 'No project path configured'})
 
@@ -1361,9 +1437,15 @@ def list_files(project_id):
         if not project:
             return jsonify({'success': False, 'message': 'Project not found'}), 404
 
-        base_path = project.get('web_path') or project.get('app_path')
+        # Determine which path to use based on path_type parameter
+        path_type = request.args.get('path_type', 'web')
+        if path_type == 'app':
+            base_path = project.get('app_path') or project.get('web_path')
+        else:
+            base_path = project.get('web_path') or project.get('app_path')
+
         if not base_path or not os.path.exists(base_path):
-            return jsonify({'success': True, 'files': [], 'base_path': base_path})
+            return jsonify({'success': True, 'files': [], 'base_path': base_path, 'path_type': path_type})
 
         subdir = request.args.get('subdir', '').strip().strip('/')
         current_path = os.path.join(base_path, subdir) if subdir else base_path
@@ -1413,11 +1495,17 @@ def delete_file(project_id):
         if not project:
             return jsonify({'success': False, 'message': 'Project not found'}), 404
 
-        base_path = project.get('web_path') or project.get('app_path')
+        data = request.get_json()
+
+        # Determine base path from path_type parameter
+        path_type = data.get('path_type', 'web')
+        if path_type == 'app':
+            base_path = project.get('app_path') or project.get('web_path')
+        else:
+            base_path = project.get('web_path') or project.get('app_path')
         if not base_path:
             return jsonify({'success': False, 'message': 'No project path configured'})
 
-        data = request.get_json()
         file_path = data.get('path', '').strip().strip('/')
 
         if not file_path:
@@ -1462,9 +1550,21 @@ def api_projects():
         ai_model = data.get('ai_model', 'sonnet')
         skip_database = data.get('skip_database', False)
 
+        # Android settings
+        android_device_type = data.get('android_device_type') or 'none'
+        android_remote_host = (data.get('android_remote_host') or '').strip() or None
+        android_remote_port = data.get('android_remote_port') or 5555
+        android_screen_size = data.get('android_screen_size') or 'phone'
+
         # Validate ai_model
         if ai_model not in ('opus', 'sonnet', 'haiku'):
             ai_model = 'sonnet'
+
+        # Validate android settings
+        if android_device_type not in ('none', 'server', 'remote'):
+            android_device_type = 'none'
+        if android_screen_size not in ('phone', 'phone_small', 'tablet_7', 'tablet_10'):
+            android_screen_size = 'phone'
 
         if not name or not code:
             return jsonify({'success': False, 'message': 'Name and code required'})
@@ -1475,8 +1575,13 @@ def api_projects():
         # Default paths based on type
         if not web_path and project_type in ('web', 'hybrid'):
             web_path = f'/var/www/projects/{code.lower()}'
-        if not app_path and project_type in ('app', 'hybrid', 'api'):
+        if not app_path and project_type in ('app', 'hybrid', 'api', 'capacitor', 'react_native', 'flutter', 'native_android', 'dotnet'):
             app_path = f'/opt/apps/{code.lower()}'
+
+        # .NET specific: get next available port
+        dotnet_port = None
+        if project_type == 'dotnet':
+            dotnet_port = get_next_dotnet_port()
 
         # Auto-create project database unless skipped
         db_name, db_user, db_password = None, None, None
@@ -1490,11 +1595,14 @@ def api_projects():
             cursor.execute("""
                 INSERT INTO projects (name, code, description, project_type, tech_stack,
                     web_path, app_path, preview_url, context, db_name, db_user, db_password, db_host,
-                    ai_model, status, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'localhost', %s, 'active', NOW(), NOW())
+                    ai_model, android_device_type, android_remote_host, android_remote_port, android_screen_size,
+                    dotnet_port, status, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'localhost', %s, %s, %s, %s, %s, %s, 'active', NOW(), NOW())
             """, (name, code, description, project_type, tech_stack or None,
                   web_path or None, app_path or None, preview_url or None, context or None,
-                  db_name, db_user, db_password, ai_model))
+                  db_name, db_user, db_password, ai_model,
+                  android_device_type, android_remote_host, android_remote_port, android_screen_size,
+                  dotnet_port))
             conn.commit()
             project_id = cursor.lastrowid
 
@@ -1506,6 +1614,10 @@ def api_projects():
                 os.makedirs(app_path, mode=0o2775, exist_ok=True)
                 os.chmod(app_path, 0o2775)  # Ensure setgid and group write
 
+            # Setup .NET project Nginx and systemd configs
+            if project_type == 'dotnet' and dotnet_port and app_path:
+                setup_dotnet_project(code, dotnet_port, app_path)
+
             cursor.close(); conn.close()
 
             result = {'success': True, 'project_id': project_id, 'message': 'Project created'}
@@ -1513,6 +1625,8 @@ def api_projects():
                 result['db_created'] = True
                 result['db_name'] = db_name
                 result['db_user'] = db_user
+            if dotnet_port:
+                result['dotnet_port'] = dotnet_port
             if db_warning:
                 result['warning'] = db_warning
             return jsonify(result)
@@ -1602,6 +1716,24 @@ def api_project_detail(project_id):
             updates.append("ai_model = %s")
             params.append(ai_model)
 
+    # Android settings
+    if 'android_device_type' in data:
+        device_type = data['android_device_type']
+        if device_type in ('none', 'server', 'remote'):
+            updates.append("android_device_type = %s")
+            params.append(device_type)
+    if 'android_remote_host' in data:
+        updates.append("android_remote_host = %s")
+        params.append(data['android_remote_host'].strip() if data['android_remote_host'] else None)
+    if 'android_remote_port' in data:
+        updates.append("android_remote_port = %s")
+        params.append(data['android_remote_port'] or 5555)
+    if 'android_screen_size' in data:
+        screen_size = data['android_screen_size']
+        if screen_size in ('phone', 'phone_small', 'tablet_7', 'tablet_10'):
+            updates.append("android_screen_size = %s")
+            params.append(screen_size)
+
     if not updates:
         cursor.close(); conn.close()
         return jsonify({'success': False, 'message': 'No fields to update'})
@@ -1634,8 +1766,10 @@ def ticket_detail(ticket_id):
         
         cursor.execute("""
             SELECT t.*, p.name as project_name, p.code as project_code,
+                   p.web_path, p.app_path,
                    COALESCE(p.web_path, p.app_path) as project_path,
-                   p.preview_url, p.ai_model as project_ai_model
+                   p.preview_url, p.ai_model as project_ai_model,
+                   p.project_type, p.android_device_type, p.android_screen_size
             FROM tickets t JOIN projects p ON t.project_id = p.id
             WHERE t.id = %s
         """, (ticket_id,))
@@ -2275,6 +2409,100 @@ def daemon_status():
     except: pass
 
     return jsonify(status)
+
+# ============ ANDROID EMULATOR ============
+
+# Screen size presets for Redroid
+SCREEN_PRESETS = {
+    'phone': {'width': 1080, 'height': 1920, 'dpi': 440, 'label': 'Phone (1080x1920)'},
+    'phone_small': {'width': 720, 'height': 1280, 'dpi': 320, 'label': 'Phone Small (720x1280)'},
+    'tablet_7': {'width': 1200, 'height': 1920, 'dpi': 240, 'label': 'Tablet 7" (1200x1920)'},
+    'tablet_10': {'width': 1600, 'height': 2560, 'dpi': 320, 'label': 'Tablet 10" (1600x2560)'}
+}
+
+@app.route('/api/emulator/start', methods=['POST'])
+@login_required
+def emulator_start():
+    """Start the Android emulator (Redroid container)"""
+    try:
+        data = request.get_json() or {}
+        screen_size = data.get('screen_size', 'phone')
+        preset = SCREEN_PRESETS.get(screen_size, SCREEN_PRESETS['phone'])
+
+        # Check if already running
+        result = subprocess.run(['docker', 'ps', '-q', '--filter', 'name=redroid'],
+                              capture_output=True, text=True, timeout=10)
+        if result.stdout.strip():
+            return jsonify({'status': 'running', 'message': 'Emulator already running'})
+
+        # Try to start existing container
+        result = subprocess.run(['docker', 'start', 'redroid'],
+                              capture_output=True, text=True, timeout=30)
+        if result.returncode == 0:
+            # Wait for boot and connect ADB
+            time.sleep(5)
+            subprocess.run(['adb', 'connect', 'localhost:5556'], capture_output=True, timeout=10)
+            return jsonify({'status': 'running', 'message': 'Emulator started'})
+
+        # Create new container
+        cmd = [
+            'docker', 'run', '-d', '--name', 'redroid',
+            '--privileged',
+            '-p', '5556:5555',
+            'redroid/redroid:15.0.0_64only-latest',
+            'androidboot.redroid_gpu_mode=guest',
+            f'androidboot.redroid_width={preset["width"]}',
+            f'androidboot.redroid_height={preset["height"]}',
+            f'androidboot.redroid_dpi={preset["dpi"]}'
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if result.returncode != 0:
+            return jsonify({'status': 'error', 'message': f'Failed to start: {result.stderr}'})
+
+        # Wait for boot and connect ADB
+        time.sleep(10)
+        subprocess.run(['adb', 'connect', 'localhost:5556'], capture_output=True, timeout=10)
+
+        return jsonify({'status': 'running', 'message': 'Emulator started'})
+    except subprocess.TimeoutExpired:
+        return jsonify({'status': 'error', 'message': 'Timeout starting emulator'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
+@app.route('/api/emulator/stop', methods=['POST'])
+@login_required
+def emulator_stop():
+    """Stop the Android emulator"""
+    try:
+        result = subprocess.run(['docker', 'stop', 'redroid'],
+                              capture_output=True, text=True, timeout=30)
+        if result.returncode == 0:
+            return jsonify({'status': 'stopped', 'message': 'Emulator stopped'})
+        return jsonify({'status': 'stopped', 'message': 'Emulator was not running'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
+@app.route('/api/emulator/status')
+@login_required
+def emulator_status():
+    """Get Android emulator status"""
+    try:
+        # Check if container is running
+        result = subprocess.run(['docker', 'ps', '-q', '--filter', 'name=redroid'],
+                              capture_output=True, text=True, timeout=10)
+        if result.stdout.strip():
+            # Check ADB connection
+            adb_result = subprocess.run(['adb', 'devices'], capture_output=True, text=True, timeout=10)
+            connected = 'localhost:5556' in adb_result.stdout
+            return jsonify({
+                'status': 'running',
+                'device': 'localhost:5556',
+                'adb_connected': connected,
+                'stream_url': f'https://{request.host.split(":")[0]}:8443/'
+            })
+        return jsonify({'status': 'stopped', 'device': None})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
 
 # ============ CONSOLE ============
 
@@ -4033,11 +4261,11 @@ threading.Thread(target=message_pusher, daemon=True).start()
 # ============ MAIN ============
 
 if __name__ == '__main__':
-    # Flask runs on internal port, OpenLiteSpeed handles SSL termination
+    # Flask runs on internal port, Nginx handles SSL termination
     port = int(config.get('WEB_PORT', '5000'))
     host = config.get('WEB_HOST', '127.0.0.1')
 
     print(f"Starting Flask+SocketIO on http://{host}:{port}")
-    print(f"OpenLiteSpeed proxies HTTPS:{config.get('ADMIN_PORT', '9453')} -> http://{host}:{port}")
+    print(f"Nginx proxies HTTPS:{config.get('ADMIN_PORT', '9453')} -> http://{host}:{port}")
 
     socketio.run(app, host=host, port=port, allow_unsafe_werkzeug=True)
