@@ -5,6 +5,26 @@ All notable changes to CodeHero will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.65.0] - 2026-01-15
+
+### Added
+- **phpMyAdmin Integration** - Database management tool alongside built-in editor
+  - Auto-login with project database credentials (signon authentication)
+  - phpMyAdmin button in Project Detail page
+  - phpMyAdmin button in Ticket Detail page
+  - Nginx reverse proxy on port 9454 (HTTPS)
+  - Automatic installation in setup.sh and upgrade.sh
+- **Git History in Ticket Page** - Access Git history directly from tickets
+
+### Improved
+- **Chat Auto-scroll** - Only auto-scrolls when user is at bottom of conversation
+- **Live Preview Scroll** - Preserves scroll position when preview refreshes
+- **Consistent Button Styling** - All action buttons now have uniform appearance
+
+### Technical
+- Safe phpMyAdmin installation (continues if fails with `|| true`)
+- Conditional signon config (only if phpMyAdmin directory exists)
+
 ## [2.64.1] - 2026-01-15
 
 ### Fixed

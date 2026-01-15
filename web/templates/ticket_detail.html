@@ -714,6 +714,10 @@
                     <button class="btn-secondary" onclick="popoutEditor()" style="margin-top:10px">⧉ Code Editor</button>
                     <button class="btn-secondary" onclick="createBackup()" style="margin-top:10px">Create Backup</button>
                     <button class="btn-secondary" onclick="createSummary()" style="margin-top:10px" title="Compress conversation to save tokens (uses Haiku)">📝 Create Summary</button>
+                    <button class="btn-secondary" onclick="window.open('/project/{{ ticket.project_id }}/git', '_blank')" style="margin-top:10px">Git History</button>
+                    {% if ticket.db_name %}
+                    <button class="btn-secondary" onclick="window.open('/project/{{ ticket.project_id }}/phpmyadmin', '_blank')" style="margin-top:10px">phpMyAdmin</button>
+                    {% endif %}
                 </div>
             </div>
 
@@ -878,6 +882,9 @@
             const empty = conversation.querySelector('.empty');
             if (empty) empty.remove();
 
+            // Check if user is at bottom BEFORE adding message
+            const isAtBottom = (conversation.scrollHeight - conversation.scrollTop - conversation.clientHeight) < 100;
+
             const div = document.createElement('div');
             div.className = `message ${msg.role}`;
             if (msg.content) div.dataset.content = msg.content;
@@ -923,7 +930,10 @@
             const toolInput = div.querySelector('.tool-input');
             if (toolInput && msg.tool_input) formatToolInputDirect(toolInput, msg.tool_name, msg.tool_input);
 
-            conversation.scrollTop = conversation.scrollHeight;
+            // Only auto-scroll if user was already at bottom
+            if (isAtBottom) {
+                conversation.scrollTop = conversation.scrollHeight;
+            }
         }
 
         function escapeHtml(text) {
@@ -1146,6 +1156,22 @@
         function refreshPreview() {
             const frame = document.getElementById('preview-frame');
             if (frame && previewUrl) {
+                // Save scroll position before refresh
+                let savedScrollX = 0, savedScrollY = 0;
+                try {
+                    savedScrollX = frame.contentWindow.scrollX || 0;
+                    savedScrollY = frame.contentWindow.scrollY || 0;
+                } catch (e) { /* Cross-origin, ignore */ }
+
+                // Set up restore after load
+                const restoreScroll = () => {
+                    try {
+                        frame.contentWindow.scrollTo(savedScrollX, savedScrollY);
+                    } catch (e) { /* Cross-origin, ignore */ }
+                    frame.removeEventListener('load', restoreScroll);
+                };
+                frame.addEventListener('load', restoreScroll);
+
                 frame.src = previewUrl + (previewUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
             }
         }

@@ -908,6 +908,9 @@
                         <button onclick="popoutEditor()" class="btn btn-green" title="Open in new window">⧉</button>
                     </div>
                     <a href="/project/{{ project.id }}/git" class="btn btn-secondary" style="text-align:center;">Git History</a>
+                    {% if project.db_name %}
+                    <a href="/project/{{ project.id }}/phpmyadmin" target="_blank" class="btn btn-cyan" style="text-align:center;">phpMyAdmin</a>
+                    {% endif %}
                     <button onclick="exportProject()" class="btn btn-cyan">Export Project</button>
                     {% if project.status == 'archived' %}
                     <button onclick="reopenProject()" class="btn btn-green">Reopen Project</button>
